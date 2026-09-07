@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Financial Consultant Portal</title>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1a202c; line-height: 1.5; }
+  .landing-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #2b6cb0 100%); padding: 20px; }
+  .client-card { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); padding: 40px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; }
+  .client-card .logo { width: 60px; height: 60px; background: #2c5282; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold; }
+  .client-card h1 { color: #1e3a5f; font-size: 26px; margin-bottom: 8px; }
+  .client-card p { color: #4a5568; font-size: 14px; margin-bottom: 24px; }
+  .client-card input, .client-card select { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 15px; margin-bottom: 16px; transition: border 0.2s; font-family: inherit; }
+  .client-card input:focus, .client-card select:focus { outline: none; border-color: #2c5282; box-shadow: 0 0 0 3px rgba(44,82,130,0.1); }
+  .client-card .btn-primary { width: 100%; padding: 12px; background: #2c5282; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .client-card .btn-primary:hover { background: #1e3a5f; }
+  .admin-link { margin-top: 24px; font-size: 13px; color: #718096; }
+  .admin-link a { color: #2c5282; text-decoration: none; font-weight: 600; }
+  .admin-link a:hover { text-decoration: underline; }
+  header { background: linear-gradient(135deg, #1e3a5f, #2c5282); color: white; padding: 20px 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  header.assistant-header { background: linear-gradient(135deg, #2f855a, #38a169); }
+  header h1 { font-size: 24px; letter-spacing: 0.5px; }
+  header .subtitle { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+  header .contact-line { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  header .role-tag { display: inline-block; background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 12px; font-size: 11px; margin-left: 10px; text-transform: uppercase; }
+  nav { background: #2c5282; padding: 0 40px; display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.assistant-nav { background: #38a169; }
+  nav button { background: transparent; color: white; border: none; padding: 12px 20px; cursor: pointer; font-size: 14px; border-bottom: 3px solid transparent; transition: all 0.2s; }
+  nav button:hover { background: rgba(255,255,255,0.1); }
+  nav button.active { border-bottom-color: #f6ad55; background: rgba(255,255,255,0.08); }
+  main { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .card h2 { color: #1e3a5f; margin-bottom: 16px; font-size: 20px; border-bottom: 2px solid #f6ad55; padding-bottom: 8px; }
+  .card h3 { color: #2c5282; margin: 16px 0 10px; font-size: 16px; }
+  label { display: block; margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: #4a5568; }
+  input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #cbd5e0; border-radius: 5px; font-size: 14px; font-family: inherit; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #2c5282; box-shadow: 0 0 0 2px rgba(44,82,130,0.15); }
+  textarea { resize: vertical; min-height: 80px; }
+  button.btn { background: #2c5282; color: white; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+  button.btn:hover { background: #1e3a5f; }
+  button.btn.secondary { background: #718096; }
+  button.btn.danger { background: #c53030; }
+  button.btn.success { background: #2f855a; }
+  button.btn.warn { background: #d69e2e; }
+  button.btn.small { padding: 6px 12px; font-size: 12px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 180px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+  th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  th { background: #f7fafc; color: #2d3748; font-weight: 600; }
+  tr:hover { background: #f7fafc; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .badge.raised { background: #fef5e7; color: #b7791f; }
+  .badge.accepted { background: #e6fffa; color: #234e52; }
+  .badge.booked { background: #ebf8ff; color: #2b6cb0; }
+  .badge.completed { background: #f0fff4; color: #22543d; }
+  .badge.invoiced { background: #faf5ff; color: #553c9a; }
+  .badge.cancelled { background: #fff5f5; color: #9b2c2c; }
+  .modifier-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-top: 4px; font-weight: 600; }
+  .modifier-tag.client { background: #fef5e7; color: #975a16; }
+  .modifier-tag.assistant { background: #f0fff4; color: #22543d; }
+  .modifier-tag.admin { background: #ebf8ff; color: #2b6cb0; }
+  .alert { padding: 10px 14px; border-radius: 5px; margin-bottom: 12px; font-size: 14px; }
+  .alert.success { background: #c6f6d5; color: #22543d; }
+  .alert.error { background: #fed7d7; color: #742a2a; }
+  .calendar { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; margin-top: 10px; }
+  .cal-day { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 5px; padding: 8px; min-height: 90px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .cal-day:hover { background: #edf2f7; }
+  .cal-day.past { opacity: 0.4; cursor: not-allowed; }
+  .cal-day.today { border-color: #2c5282; border-width: 2px; }
+  .cal-day .date-num { font-weight: 700; color: #2d3748; }
+  .cal-day .slots { margin-top: 4px; font-size: 11px; color: #718096; }
+  .cal-header { text-align: center; font-weight: 600; padding: 6px; color: #4a5568; font-size: 12px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: white; border-radius: 8px; padding: 28px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { color: #1e3a5f; margin-bottom: 16px; }
+  .notif-item { padding: 10px 36px 10px 10px; border-left: 3px solid #2c5282; background: #f7fafc; margin-bottom: 8px; border-radius: 4px; font-size: 13px; position: relative; }
+  .notif-item.unread { background: #ebf8ff; border-left-color: #f6ad55; }
+  .notif-item .time { font-size: 11px; color: #718096; margin-top: 4px; }
+  .notif-item .delete-btn { position: absolute; top: 8px; right: 8px; background: transparent; border: none; cursor: pointer; font-size: 14px; color: #a0aec0; padding: 4px; border-radius: 4px; transition: all 0.2s; }
+  .notif-item .delete-btn:hover { color: #c53030; background: #fff5f5; }
+  .avail-block { display: flex; gap: 8px; align-items: center; padding: 8px; background: #f7fafc; border-radius: 4px; margin-bottom: 6px; font-size: 13px; }
+  .avail-block .remove { background: #c53030; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; margin-left: auto; }
+  .service-block { display: flex; gap: 12px; align-items: center; padding: 12px; background: #f7fafc; border-radius: 6px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+  .service-block .svc-name { flex: 1; font-weight: 600; color: #2d3748; }
+  .service-block .svc-rate { color: #2f855a; font-weight: 700; }
+  footer { text-align: center; padding: 20px; color: #718096; font-size: 12px; }
+  .hidden { display: none !important; }
+  .dial-wrap { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .dial-col { display: flex; flex-direction: column; align-items: center; }
+  .dial-col button { width: 48px; height: 28px; background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: 700; color: #2d3748; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .dial-col button:hover { background: #e2e8f0; }
+  .dial-col button:active { background: #cbd5e0; }
+  .dial-val { width: 48px; height: 40px; text-align: center; font-size: 22px; font-weight: 700; color: #1e3a5f; background: #f7fafc; border: 2px solid #2c5282; border-radius: 6px; line-height: 40px; user-select: none; }
+  .dial-sep { font-size: 24px; font-weight: 700; color: #2c5282; margin: 0 2px; align-self: center; padding-top: 14px; }
+  .dial-label { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-chip { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid #e2e8f0; background: white; color: #4a5568; transition: all 0.15s; text-transform: uppercase; }
+  .filter-chip:hover { border-color: #2c5282; color: #2c5282; }
+  .filter-chip.active { background: #2c5282; color: white; border-color: #2c5282; }
+  .filter-chip.active.raised { background: #b7791f; border-color: #b7791f; }
+  .filter-chip.active.accepted { background: #234e52; border-color: #234e52; }
+  .filter-chip.active.booked { background: #2b6cb0; border-color: #2b6cb0; }
+  .filter-chip.active.completed { background: #22543d; border-color: #22543d; }
+  .filter-chip.active.invoiced { background: #553c9a; border-color: #553c9a; }
+  .filter-chip.active.cancelled { background: #9b2c2c; border-color: #9b2c2c; }
+  .loading { text-align: center; padding: 40px; color: #718096; font-size: 18px; }
+  @media print { header, nav, footer, .no-print { display: none !important; } body { background: white; } }
+</style>
+</head>
+<body>
+
+<div id="loadingScreen" class="landing-wrap">
+  <div class="loading">Loading...</div>
+</div>
+
+<div id="clientLanding" class="landing-wrap hidden">
+  <div class="client-card">
+    <div class="logo">FC</div>
+    <h1 id="landingTitle">Financial Consultant Portal</h1>
+    <p id="landingSubtitle">Professional financial advisory services</p>
+    <div id="landingAlert"></div>
+    <input id="clientEmailInput" type="email" placeholder="Enter your registered email address" />
+    <button class="btn-primary" onclick="clientLogin()">Access Client Portal</button>
+    <div class="admin-link">Staff access? <a href="#" onclick="showAdminLogin(); return false;">Admin / Assistant Login</a></div>
+    <div class="admin-link" style="margin-top:10px;"><a href="#" onclick="resetAdminSetup(); return false;" style="color:#c53030;">Reset Admin Setup</a></div>
+  </div>
+</div>
+
+<div id="adminLoginScreen" class="landing-wrap hidden">
+  <div class="client-card">
+    <div class="logo">ST</div>
+    <h1>Staff Login</h1>
+    <p>Consultant & Assistant access</p>
+    <div id="adminLoginAlert"></div>
+    <input id="loginEmail" type="email" placeholder="Email" autocomplete="email"/>
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"/>
+    <br/>
+    <button class="btn-primary" onclick="doStaffLogin()">Sign In</button>
+    <div class="admin-link"><a href="#" onclick="showClientLanding(); return false;">← Back to Client Portal</a></div>
+  </div>
+</div>
+
+<div id="mainApp" class="hidden">
+  <header id="mainHeader">
+    <h1 id="headerTitle">Financial Consultant Portal <span class="role-tag" id="roleTag">Admin</span></h1>
+    <div class="subtitle" id="headerSubtitle">Professional financial advisory services</div>
+    <div class="contact-line" id="headerContact"></div>
+  </header>
+  <nav id="adminNav"></nav>
+  <main>
+    <section id="tab-dashboard">
+      <div class="card">
+        <h2>Dashboard</h2>
+        <div class="row">
+          <div class="card" style="margin:0; background:#ebf8ff;"><h3 style="color:#2b6cb0; margin:0;">Open Tickets</h3><div id="statOpen" style="font-size:32px; font-weight:700; color:#2b6cb0;">0</div></div>
+          <div class="card" style="margin:0; background:#f0fff4;"><h3 style="color:#22543d; margin:0;">Booked</h3><div id="statBooked" style="font-size:32px; font-weight:700; color:#22543d;">0</div></div>
+          <div class="card" style="margin:0; background:#faf5ff;"><h3 style="color:#553c9a; margin:0;">Invoiced</h3><div id="statInvoiced" style="font-size:32px; font-weight:700; color:#553c9a;">0</div></div>
+          <div class="card" style="margin:0; background:#fff5f5;" id="statClientsCard"><h3 style="color:#9b2c2c; margin:0;">Total Clients</h3><div id="statClients" style="font-size:32px; font-weight:700; color:#9b2c2c;">0</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Monthly Overview (Current Month)</h2>
+        <div class="row">
+          <div class="card" style="margin:0; background:#fff5f5;"><h3 style="color:#9b2c2c; margin:0;">Requested Hrs</h3><div id="statReqHours" style="font-size:32px; font-weight:700; color:#9b2c2c;">0</div></div>
+          <div class="card" style="margin:0; background:#ebf8ff;"><h3 style="color:#2b6cb0; margin:0;">Booked Hrs</h3><div id="statBookedHours" style="font-size:32px; font-weight:700; color:#2b6cb0;">0</div></div>
+          <div class="card" style="margin:0; background:#f0fff4;"><h3 style="color:#22543d; margin:0;">Closed Hrs</h3><div id="statClosedHours" style="font-size:32px; font-weight:700; color:#22543d;">0</div></div>
+          <div class="card" style="margin:0; background:#faf5ff;"><h3 style="color:#553c9a; margin:0;">Billed Hrs</h3><div id="statBilledHours" style="font-size:32px; font-weight:700; color:#553c9a;">0</div></div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <div class="card" style="margin:0; background:#fef5e7; flex:1;"><h3 style="color:#975a16; margin:0;">Total Billed Amount</h3><div id="statBilledAmount" style="font-size:28px; font-weight:700; color:#975a16;">0</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Upcoming Appointments</h2>
+        <div id="upcomingList"></div>
+      </div>
+    </section>
+
+    <section id="tab-tickets" class="hidden">
+      <div class="card">
+        <h2>All Tickets <span id="assistantAddBtn"></span></h2>
+        <table id="ticketsTable"><thead><tr><th>ID</th><th>Client</th><th>Service</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section id="tab-clients" class="hidden">
+      <div class="card">
+        <h2>Manage Clients</h2>
+        <button class="btn" onclick="openAddClient()">+ Add Client</button><br/><br/>
+        <table id="clientsTable"><thead><tr><th>Name</th><th>Email</th><th>Organization</th><th>Added</th><th>Actions</th></tr></thead><tbody></tbody></table>
+        <h3>Allowed Email Domains</h3>
+        <p style="font-size:13px; color:#718096; margin-bottom:10px;">Users from these domains can access the client portal without being added individually.</p>
+        <div class="row">
+          <input id="newDomain" placeholder="@example.com"/>
+          <button class="btn" onclick="addDomain()" style="flex:0 0 auto;">Add Domain</button>
+        </div>
+        <div id="domainList" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <section id="tab-services" class="hidden">
+      <div class="card">
+        <h2>Services & Tasks <span id="servicesAdminOnly"></span></h2>
+        <p style="font-size:13px; color:#718096; margin-bottom:14px;">Define the services you offer and their default hourly rates.</p>
+        <button class="btn" id="addServiceBtn" onclick="openAddService()">+ Add New Service</button>
+        <div id="servicesList" style="margin-top:16px;"></div>
+      </div>
+    </section>
+
+    <section id="tab-calendar" class="hidden">
+      <div class="card">
+        <h2>Availability Calendar</h2>
+        <p style="font-size:13px; color:#718096; margin-bottom:10px;">Default hours: 8:00 AM – 8:00 PM. Click a day to block unavailable times.</p>
+        <div class="row" style="margin-bottom:10px;">
+          <button class="btn small" onclick="changeWeek(-1)">← Previous Week</button>
+          <div id="weekLabel" style="text-align:center; font-weight:600; font-size:16px; padding:6px;"></div>
+          <button class="btn small" onclick="changeWeek(1)">Next Week →</button>
+        </div>
+        <div class="calendar" id="calendarGrid"></div>
+        <h3>Blocked Time Slots</h3>
+        <div id="blockedSlotsList"></div>
+      </div>
+    </section>
+
+    <section id="tab-notifications" class="hidden">
+      <div class="card">
+        <h2>Notifications</h2>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+          <button class="btn small secondary" onclick="markAllRead()">Mark All as Read</button>
+        </div>
+        <div class="filter-bar" id="notifFilters">
+          <span class="filter-chip active" data-filter="all" onclick="setNotifFilter('all',this)">All</span>
+          <span class="filter-chip raised" data-filter="raised" onclick="setNotifFilter('raised',this)">Raised</span>
+          <span class="filter-chip accepted" data-filter="accepted" onclick="setNotifFilter('accepted',this)">Accepted</span>
+          <span class="filter-chip booked" data-filter="booked" onclick="setNotifFilter('booked',this)">Booked</span>
+          <span class="filter-chip completed" data-filter="completed" onclick="setNotifFilter('completed',this)">Completed</span>
+          <span class="filter-chip invoiced" data-filter="invoiced" onclick="setNotifFilter('invoiced',this)">Invoiced</span>
+          <span class="filter-chip cancelled" data-filter="cancelled" onclick="setNotifFilter('cancelled',this)">Cancelled</span>
+        </div>
+        <div id="notifList"></div>
+      </div>
+    </section>
+
+    <section id="tab-settings" class="hidden">
+      <div class="card">
+        <h2>Settings</h2>
+        <label>Header Title</label><input id="setTitle"/>
+        <label>Tagline (below title)</label><input id="setSubtitle"/>
+        <label>Email (for password reset & notifications)</label><input id="setEmail"/>
+        <label>Phone</label><input id="setPhone"/>
+        <label>Default Hourly Rate (fallback for legacy tickets)</label><input id="setRate" type="number" step="0.01"/>
+        <label>Currency</label>
+        <select id="setCurrency">
+          <option value="NPR">NPR – Nepalese Rupee</option>
+          <option value="INR">INR – Indian Rupee</option>
+          <option value="USD">USD – US Dollar ($)</option>
+        </select>
+        <hr style="margin:20px 0; border:0; border-top:1px solid #e2e8f0;"/>
+        <h3>Assistant Account</h3>
+        <p style="font-size:12px; color:#718096; margin-bottom:10px;">Assistants can manage tickets, calendar, and services but cannot access settings or delete clients.</p>
+        <label><input type="checkbox" id="setAssistantEnabled" style="width:auto; margin-right:8px;"/> Enable Assistant Access</label>
+        <label>Assistant Email</label><input id="setAssistantEmail" type="email"/>
+        <label>Assistant Password</label><input id="setAssistantPass" type="password"/>
+        <hr style="margin:20px 0; border:0; border-top:1px solid #e2e8f0;"/>
+        <h3>EmailJS Configuration</h3>
+        <p style="font-size:12px; color:#718096; margin-bottom:10px;">Leave blank to mock emails in console. Get free keys at <a href="https://www.emailjs.com/" target="_blank">emailjs.com</a></p>
+        <label>EmailJS Public Key</label><input id="setEjsPub" placeholder="e.g., user_abc123"/>
+        <label>EmailJS Service ID</label><input id="setEjsServ" placeholder="e.g., service_xyz"/>
+        <label>EmailJS Template ID</label><input id="setEjsTemp" placeholder="e.g., template_123"/>
+        <hr style="margin:20px 0; border:0; border-top:1px solid #e2e8f0;"/>
+        <label>Change Admin Password (leave blank to keep current)</label><input id="setPass" type="password"/>
+        <br/><br/>
+        <button class="btn" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </section>
+  </main>
+  <footer>© 2026 Financial Consultant Portal</footer>
+</div>
+
+<div id="clientPortal" class="hidden">
+  <header>
+    <h1 id="clientHeaderTitle">Financial Consultant Portal</h1>
+    <div class="subtitle" id="clientHeaderSubtitle"></div>
+    <div class="contact-line" id="clientHeaderContact"></div>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Welcome, <span id="clientName"></span></h2>
+      <p id="clientEmailDisplay" style="color:#718096; font-size:13px;"></p>
+      <br/>
+      <button class="btn" onclick="openNewTicket()">+ Request Consultation</button>
+      <button class="btn secondary" onclick="clientLogout()" style="float:right;">Logout</button>
+    </div>
+    <div class="card">
+      <h2>My Tickets</h2>
+      <table id="myTicketsTable"><thead><tr><th>ID</th><th>Service</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h2>My Notifications</h2>
+      <div class="filter-bar" id="clientNotifFilters">
+        <span class="filter-chip active" data-filter="all" onclick="setClientNotifFilter('all',this)">All</span>
+        <span class="filter-chip raised" data-filter="raised" onclick="setClientNotifFilter('raised',this)">Raised</span>
+        <span class="filter-chip accepted" data-filter="accepted" onclick="setClientNotifFilter('accepted',this)">Accepted</span>
+        <span class="filter-chip booked" data-filter="booked" onclick="setClientNotifFilter('booked',this)">Booked</span>
+        <span class="filter-chip completed" data-filter="completed" onclick="setClientNotifFilter('completed',this)">Completed</span>
+        <span class="filter-chip invoiced" data-filter="invoiced" onclick="setClientNotifFilter('invoiced',this)">Invoiced</span>
+        <span class="filter-chip cancelled" data-filter="cancelled" onclick="setClientNotifFilter('cancelled',this)">Cancelled</span>
+      </div>
+      <div id="clientNotifList"></div>
+    </div>
+  </main>
+</div>
+
+<div id="modalContainer"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDHEdCNJLTlahQ4ppEhch7oXOFJExB1wPw",
+  authDomain: "consulting-portal-82831.firebaseapp.com",
+  projectId: "consulting-portal-82831",
+  storageBucket: "consulting-portal-82831.firebasestorage.app",
+  messagingSenderId: "610436493430",
+  appId: "1:610436493430:web:a82db4e2960ac2e09def57",
+  measurementId: "G-QHNKB8VWB7"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const SESSION_TIMEOUT = 5 * 60 * 1000;
+function updateActivity() { localStorage.setItem('lastActivity', Date.now().toString()); }
+['mousemove','keydown','click','scroll','touchstart'].forEach(evt => document.addEventListener(evt, updateActivity));
+setInterval(() => { if (Date.now() - parseInt(localStorage.getItem('lastActivity')||'0') > SESSION_TIMEOUT) forceLogout(); }, 10000);
+
+function forceLogout() {
+  localStorage.removeItem('lastActivity');
+  localStorage.removeItem('currentUserRole');
+  localStorage.removeItem('currentClientEmail');
+  auth.signOut();
+  currentClient = null; currentRole = null;
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('clientPortal').classList.add('hidden');
+  document.getElementById('adminLoginScreen').classList.add('hidden');
+  document.getElementById('clientLanding').classList.remove('hidden');
+}
+
+let data = {
+  admin: { email: '', title: 'Financial Consultant Portal', subtitle: 'Professional financial advisory services', phone: '', rate: 100, currency: 'USD', ejsPub: '', ejsServ: '', ejsTemp: '' },
+  assistant: { email: '', enabled: false },
+  clients: [],
+  domains: [],
+  tickets: [],
+  blocked: [],
+  notifications: [],
+  services: []
+};
+
+let currentClient = null, currentRole = null, currentWeekStart = getWeekStart(new Date());
+let adminNotifFilter = 'all', clientNotifFilter = 'all';
+
+async function loadData() {
+  try {
+    const doc = await db.collection('settings').doc('config').get();
+    if (doc.exists) {
+      data = doc.data();
+      console.log('Loaded data:', data);
+    } else {
+      console.log('No config found, initializing...');
+      data.services = [{ id: uid(), name: 'General Consultation', rate: 100 }];
+      await db.collection('settings').doc('config').set(data);
+    }
+  } catch (error) {
+    console.error('Error loading data:', error);
+  }
+}
+
+async function saveData() {
+  try {
+    await db.collection('settings').doc('config').set(data);
+    console.log('Data saved successfully');
+  } catch (error) {
+    console.error('Error saving data:', error);
+  }
+}
+
+function getWeekStart(d) { const x=new Date(d); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x; }
+function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function fmtDateNice(s) { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function currencySymbol(c) { return c==='USD'?'$':c==='INR'?'₹':'Rs. '; }
+function fmtMoney(n) { return currencySymbol(data.admin.currency)+Number(n).toFixed(2); }
+function addDays(d,n) { const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function timeToMins(t) { const [h,m]=t.split(':').map(Number); return h*60+m; }
+function minsToTime(m) { return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function getTicketRate(t) { return t.serviceRate||data.admin.rate; }
+function getTicketServiceName(t) { return t.serviceName||'General Consultation'; }
+function fmtDuration(h) { const m=Math.round(h*60); return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`; }
+function modifierTag(t) { const by=t.lastModifiedBy||'admin'; const l={client:'🧑 Client',assistant:'👨‍💼 Assistant',admin:'👤 Consultant'}; return `<div class="modifier-tag ${by}">${l[by]||l.admin}</div>`; }
+function getSortedServices() { return data.services.slice().sort((a,b)=>a.name.localeCompare(b.name)); }
+function buildNotifMessage(t, actionVerb) {
+  const org = t.organization || 'Independent';
+  return `${t.clientName} (${org}) — ${getTicketServiceName(t)} on ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)}) ${actionVerb}`;
+}
+function buildClientNotifMessage(t, actionText) {
+  return `Your ${getTicketServiceName(t)} appointment on ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)}) ${actionText}`;
+}
+
+function sendEmailNotification(to,subject,msg) {
+  if (data.admin.ejsPub&&data.admin.ejsServ&&data.admin.ejsTemp) { emailjs.init(data.admin.ejsPub); emailjs.send(data.admin.ejsServ,data.admin.ejsTemp,{to_email:to,from_name:data.admin.title,reply_to:data.admin.email,subject,message:msg}).catch(()=>{}); }
+  else console.log(`[MOCK] To:${to} | ${subject} | ${msg}`);
+}
+
+// FIXED: Better admin assignment with case-insensitive email comparison
+auth.onAuthStateChanged(async (user) => {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  
+  if (user) {
+    console.log('User logged in:', user.email);
+    await loadData();
+    
+    const userEmail = user.email.toLowerCase().trim();
+    const adminEmail = data.admin.email ? data.admin.email.toLowerCase().trim() : '';
+    
+    console.log('User email:', userEmail);
+    console.log('Admin email in DB:', adminEmail);
+    
+    // First login - assign as admin
+    if (!adminEmail) {
+      console.log('First login detected, assigning as admin...');
+      try {
+        data.admin.email = userEmail;
+        await saveData();
+        console.log('Admin email saved:', data.admin.email);
+        
+        // Verify it was saved
+        const verifyDoc = await db.collection('settings').doc('config').get();
+        console.log('Verification - admin email after save:', verifyDoc.data().admin.email);
+        
+        currentRole = 'admin';
+        localStorage.setItem('currentUserRole', 'admin');
+        document.getElementById('clientLanding').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        updateActivity();
+        renderAll();
+        alert('Welcome! You have been assigned as the Admin. Please complete your setup in Settings.');
+      } catch (error) {
+        console.error('Error assigning admin:', error);
+        alert('Error setting up admin. Please try again.');
+      }
+    }
+    // Admin login - case-insensitive comparison
+    else if (userEmail === adminEmail) {
+      console.log('Admin login successful');
+      currentRole = 'admin';
+      localStorage.setItem('currentUserRole', 'admin');
+      document.getElementById('clientLanding').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      updateActivity();
+      renderAll();
+    }
+    // Assistant login
+    else if (data.assistant.enabled && userEmail === (data.assistant.email || '').toLowerCase().trim()) {
+      console.log('Assistant login successful');
+      currentRole = 'assistant';
+      localStorage.setItem('currentUserRole', 'assistant');
+      document.getElementById('clientLanding').classList.add('hidden');
+      document.getElementById('mainApp').classList.remove('hidden');
+      updateActivity();
+      renderAll();
+    }
+    // Client login
+    else {
+      const client = data.clients.find(c => c.email.toLowerCase() === userEmail);
+      const domain = '@' + userEmail.split('@')[1];
+      const domainAllowed = data.domains.some(d => d.toLowerCase() === domain);
+      
+      if (client || domainAllowed) {
+        console.log('Client login successful');
+        currentClient = client || { name: userEmail.split('@')[0], email: userEmail, organization: domain.slice(1) };
+        localStorage.setItem('currentClientEmail', userEmail);
+        document.getElementById('clientLanding').classList.add('hidden');
+        document.getElementById('clientPortal').classList.remove('hidden');
+        updateActivity();
+        document.getElementById('clientHeaderTitle').textContent = data.admin.title;
+        document.getElementById('clientHeaderSubtitle').textContent = data.admin.subtitle;
+        document.getElementById('clientHeaderContact').textContent = `${data.admin.email}  •  ${data.admin.phone}`;
+        document.getElementById('clientName').textContent = currentClient.name;
+        document.getElementById('clientEmailDisplay').textContent = `${currentClient.email} ${currentClient.organization?'| '+currentClient.organization:''}`;
+        renderClientTickets();
+        renderClientNotifs();
+      } else {
+        console.log('Access denied for:', userEmail);
+        alert('Access denied. Your email is not registered.');
+        auth.signOut();
+        showClientLanding();
+      }
+    }
+  } else {
+    console.log('No user logged in');
+    showClientLanding();
+  }
+});
+
+function showClientLanding() {
+  document.getElementById('adminLoginScreen').classList.add('hidden');
+  document.getElementById('clientLanding').classList.remove('hidden');
+  loadData().then(() => {
+    document.getElementById('landingTitle').textContent = data.admin.title;
+    document.getElementById('landingSubtitle').textContent = data.admin.subtitle;
+  });
+}
+
+function showAdminLogin() {
+  document.getElementById('clientLanding').classList.add('hidden');
+  document.getElementById('adminLoginScreen').classList.remove('hidden');
+}
+
+async function doStaffLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+  } catch (error) {
+    console.error('Login error:', error);
+    document.getElementById('adminLoginAlert').innerHTML = '<div class="alert error">Invalid credentials</div>';
+  }
+}
+
+function logout() { forceLogout(); document.getElementById('adminLoginScreen').classList.remove('hidden'); document.getElementById('loginPass').value=''; }
+
+async function resetAdminSetup() {
+  if (confirm('This will reset the admin setup. Are you sure?')) {
+    try {
+      await db.collection('settings').doc('config').delete();
+      alert('Admin setup reset. Please refresh the page and log in again.');
+      location.reload();
+    } catch (error) {
+      console.error('Error resetting:', error);
+      alert('Error resetting.');
+    }
+  }
+}
+
+async function clientLogin() {
+  const email = document.getElementById('clientEmailInput').value.trim().toLowerCase();
+  const al = document.getElementById('landingAlert');
+  
+  if (!email) { al.innerHTML='<div class="alert error">Enter email.</div>'; return; }
+  
+  await loadData();
+  
+  const domain = '@' + email.split('@')[1];
+  const client = data.clients.find(c => c.email.toLowerCase() === email);
+  const domOk = data.domains.some(d => d.toLowerCase() === domain);
+  
+  if (!client && !domOk) {
+    al.innerHTML = '<div class="alert error">Not registered. Contact consultant.</div>';
+    return;
+  }
+  
+  currentClient = client || { name: email.split('@')[0], email, organization: domain.slice(1) };
+  localStorage.setItem('currentClientEmail', email);
+  document.getElementById('clientLanding').classList.add('hidden');
+  document.getElementById('clientPortal').classList.remove('hidden');
+  updateActivity();
+  document.getElementById('clientHeaderTitle').textContent = data.admin.title;
+  document.getElementById('clientHeaderSubtitle').textContent = data.admin.subtitle;
+  document.getElementById('clientHeaderContact').textContent = `${data.admin.email}  •  ${data.admin.phone}`;
+  document.getElementById('clientName').textContent = currentClient.name;
+  document.getElementById('clientEmailDisplay').textContent = `${currentClient.email} ${currentClient.organization?'| '+currentClient.organization:''}`;
+  renderClientTickets();
+  renderClientNotifs();
+}
+
+function clientLogout() { forceLogout(); document.getElementById('clientLanding').classList.remove('hidden'); document.getElementById('clientEmailInput').value=''; document.getElementById('landingAlert').innerHTML=''; }
+
+function buildNav() {
+  const nav=document.getElementById('adminNav'), isA=currentRole==='admin';
+  nav.className=isA?'':'assistant-nav'; document.getElementById('mainHeader').className=isA?'':'assistant-header';
+  let h=`<button class="active" onclick="showTab('dashboard',this)">Dashboard</button><button onclick="showTab('tickets',this)">Tickets</button>`;
+  if (isA) h+=`<button onclick="showTab('clients',this)">Clients</button>`;
+  h+=`<button onclick="showTab('services',this)">Services</button><button onclick="showTab('calendar',this)">Calendar</button><button onclick="showTab('notifications',this)">Notifications <span id="notifCount"></span></button>`;
+  if (isA) h+=`<button onclick="showTab('settings',this)">Settings</button>`;
+  h+=`<button onclick="logout()" style="margin-left:auto;">Logout</button>`;
+  nav.innerHTML=h;
+  document.getElementById('statClientsCard').style.display=isA?'':'none';
+  document.getElementById('assistantAddBtn').innerHTML=`<button class="btn small success" style="margin-left:10px;" onclick="openAddTicketForClient()">+ Add Ticket for Client</button>`;
+}
+
+function showTab(name,btn) {
+  document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (name==='dashboard') renderDashboard(); if (name==='tickets') renderTickets();
+  if (name==='clients'&&currentRole==='admin') renderClients(); if (name==='services') renderServices();
+  if (name==='calendar') renderCalendar(); if (name==='notifications') renderNotifications();
+  if (name==='settings'&&currentRole==='admin') loadSettings();
+}
+
+function renderAll() {
+  document.getElementById('headerTitle').innerHTML=`${data.admin.title} <span class="role-tag" id="roleTag">${currentRole==='admin'?'Admin':'Assistant'}</span>`;
+  document.getElementById('headerSubtitle').textContent=data.admin.subtitle;
+  document.getElementById('headerContact').textContent=`${data.admin.email}  •  ${data.admin.phone}`;
+  buildNav(); renderDashboard(); renderNotifBadge();
+}
+
+function renderDashboard() {
+  document.getElementById('statOpen').textContent=data.tickets.filter(t=>t.status==='raised'||t.status==='accepted').length;
+  document.getElementById('statBooked').textContent=data.tickets.filter(t=>t.status==='booked').length;
+  document.getElementById('statInvoiced').textContent=data.tickets.filter(t=>t.status==='invoiced').length;
+  document.getElementById('statClients').textContent=data.clients.length;
+  const now=new Date(), cm=now.getMonth(), cy=now.getFullYear();
+  const mt=data.tickets.filter(t=>{const[y,m]=t.date.split('-').map(Number); return m-1===cm&&y===cy;});
+  document.getElementById('statReqHours').textContent=mt.filter(t=>t.status==='raised'||t.status==='accepted').reduce((s,t)=>s+t.hours,0).toFixed(2);
+  document.getElementById('statBookedHours').textContent=mt.filter(t=>t.status==='booked').reduce((s,t)=>s+t.hours,0).toFixed(2);
+  document.getElementById('statClosedHours').textContent=mt.filter(t=>t.status==='completed').reduce((s,t)=>s+t.hours,0).toFixed(2);
+  document.getElementById('statBilledHours').textContent=mt.filter(t=>t.status==='invoiced').reduce((s,t)=>s+t.hours,0).toFixed(2);
+  document.getElementById('statBilledAmount').textContent=fmtMoney(mt.filter(t=>t.status==='invoiced').reduce((s,t)=>s+(t.hours*getTicketRate(t)),0));
+  const up=data.tickets.filter(t=>t.status==='booked').sort((a,b)=>(a.date+a.startTime).localeCompare(b.date+b.startTime));
+  const el=document.getElementById('upcomingList');
+  if (!up.length) { el.innerHTML='<p style="color:#718096;">No upcoming appointments.</p>'; return; }
+  el.innerHTML='<table><thead><tr><th>Client</th><th>Service</th><th>Date</th><th>Time</th><th>Duration</th><th>Last Action</th></tr></thead><tbody>'+up.map(t=>`<tr><td>${t.clientName}</td><td>${getTicketServiceName(t)}</td><td>${fmtDateNice(t.date)}</td><td>${t.startTime}</td><td>${fmtDuration(t.hours)}</td><td>${modifierTag(t)}</td></tr>`).join('')+'</tbody></table>';
+}
+
+function renderTickets() {
+  const tbody=document.querySelector('#ticketsTable tbody');
+  if (!data.tickets.length) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center; color:#718096;">No tickets yet.</td></tr>'; return; }
+  const isA=currentRole==='admin';
+  tbody.innerHTML=data.tickets.slice().reverse().map(t=>{
+    let a='';
+    if (t.status==='raised') a=`<button class="btn small success" onclick="acceptTicket('${t.id}')">Accept</button> <button class="btn small warn" onclick="rescheduleTicket('${t.id}')">Reschedule</button> <button class="btn small danger" onclick="cancelTicket('${t.id}')">Cancel</button>`;
+    else if (t.status==='accepted') a=`<button class="btn small" onclick="bookTicket('${t.id}')">Book</button> <button class="btn small warn" onclick="rescheduleTicket('${t.id}')">Reschedule</button> <button class="btn small danger" onclick="cancelTicket('${t.id}')">Cancel</button>`;
+    else if (t.status==='booked') a=`<button class="btn small success" onclick="completeTicket('${t.id}')">Complete</button> <button class="btn small warn" onclick="rescheduleTicket('${t.id}')">Reschedule</button> <button class="btn small danger" onclick="cancelTicket('${t.id}')">Cancel</button>`;
+    else if (t.status==='completed') a=`<button class="btn small" onclick="openInvoiceModal('${t.id}')">Send Invoice</button>`;
+    else if (t.status==='invoiced') a=`<button class="btn small secondary" onclick="printInvoice('${t.id}')">Print Invoice</button>`;
+    if (isA) a+=` <button class="btn small danger" style="margin-left:4px;" onclick="deleteTicket('${t.id}')">Delete</button>`;
+    return `<tr><td>#${t.id.slice(-5).toUpperCase()}</td><td>${t.clientName}<br/><small style="color:#718096;">${t.organization||'Independent'}</small></td><td>${getTicketServiceName(t)}<br/><small style="color:#718096;">${fmtMoney(getTicketRate(t))}/hr</small></td><td>${fmtDateNice(t.date)}</td><td>${t.startTime}</td><td>${fmtDuration(t.hours)}</td><td><span class="badge ${t.status}">${t.status}</span>${modifierTag(t)}</td><td>${a}</td></tr>`;
+  }).join('');
+}
+
+async function deleteTicket(id) { if (!confirm('Permanently delete?')) return; data.tickets=data.tickets.filter(t=>t.id!==id); await saveData(); renderTickets(); renderDashboard(); renderNotifBadge(); }
+
+async function acceptTicket(id) { await updateTicketStatus(id,'accepted','Ticket Accepted','has been accepted.',currentRole); }
+async function bookTicket(id) { await updateTicketStatus(id,'booked','Appointment Booked','has been confirmed.',currentRole); }
+async function completeTicket(id) { await updateTicketStatus(id,'completed','Consultation Completed','has been marked as completed.',currentRole); }
+async function cancelTicket(id) { if (!confirm('Cancel this ticket?')) return; await updateTicketStatus(id,'cancelled','Appointment Cancelled','has been cancelled.',currentRole); }
+
+async function updateTicketStatus(id,ns,type,actionText,mod) {
+  const t=data.tickets.find(x=>x.id===id);
+  t.status=ns;
+  t.lastModifiedBy=mod;
+  t.lastModifiedAt=new Date().toISOString();
+  t.updatedAt=new Date().toISOString();
+  const clientMsg = buildClientNotifMessage(t, actionText);
+  const adminMsg = buildNotifMessage(t, actionText.replace('has been ','').replace('has ',''));
+  addNotif(true,t.clientEmail,type,clientMsg,t.id,mod);
+  addNotif(true,null,type,adminMsg,t.id,mod);
+  sendEmailNotification(t.clientEmail,`${type}: ${t.clientName}`,clientMsg);
+  sendEmailNotification(data.admin.email,`${type}`,adminMsg);
+  await saveData();
+  renderTickets();
+  renderDashboard();
+  renderNotifBadge();
+}
+
+function rescheduleTicket(id) {
+  const t=data.tickets.find(x=>x.id===id);
+  const max=fmtDate(addDays(new Date(),7));
+  openModal(`<h3>Reschedule Appointment</h3><p style="font-size:13px; color:#718096;">Current: ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)})</p>
+    <label>New Date</label><input id="rsDate" type="date" min="${fmtDate(new Date())}" max="${max}" onchange="updateAvailableTimes('rsDate','rsTime','rsDurH','rsDurM')"/>
+    <label>New Start Time</label><select id="rsTime"></select>
+    <label>New Duration</label>${buildDialHTML('rsDurH','rsDurM')}
+    <br/><br/><button class="btn" onclick="saveReschedule('${id}')">Reschedule</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
+  const tm=Math.round(t.hours*60);
+  setTimeout(()=>{ setDialValue('rsDurH','rsDurM',tm); updateAvailableTimes('rsDate','rsTime','rsDurH','rsDurM'); },50);
+}
+
+async function saveReschedule(id) {
+  const t=data.tickets.find(x=>x.id===id);
+  t.date=document.getElementById('rsDate').value;
+  t.startTime=document.getElementById('rsTime').value;
+  t.hours=getDialHours('rsDurH','rsDurM');
+  t.lastModifiedBy=currentRole;
+  t.lastModifiedAt=new Date().toISOString();
+  await updateTicketStatus(id,'booked','Appointment Rescheduled','has been rescheduled to '+fmtDateNice(t.date)+' at '+t.startTime+' ('+fmtDuration(t.hours)+')',currentRole);
+  closeModal();
+}
+
+function openInvoiceModal(id) {
+  const t=data.tickets.find(x=>x.id===id);
+  openModal(`<h3>Prepare Invoice</h3><p style="font-size:13px; color:#718096; margin-bottom:10px;">Client: ${t.clientName} | Service: ${getTicketServiceName(t)} | Duration: ${fmtDuration(t.hours)} | Rate: ${fmtMoney(getTicketRate(t))}/hr | Total: ${fmtMoney(t.hours*getTicketRate(t))}</p>
+    <label>Service Description</label><textarea id="invDesc" style="min-height:100px;">${t.invoiceDescription||getTicketServiceName(t)}</textarea>
+    <br/><br/><button class="btn" onclick="finalizeInvoice('${id}')">Generate & Send Invoice</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
+}
+
+async function finalizeInvoice(id) {
+  const t=data.tickets.find(x=>x.id===id);
+  t.invoiceDescription=document.getElementById('invDesc').value.trim()||getTicketServiceName(t);
+  t.lastModifiedBy=currentRole;
+  t.lastModifiedAt=new Date().toISOString();
+  t.status='invoiced';
+  t.updatedAt=new Date().toISOString();
+  const total=t.hours*getTicketRate(t);
+  const clientMsg=`Your invoice for ${fmtDuration(t.hours)} of ${getTicketServiceName(t)} (${fmtMoney(total)}) is ready to download.`;
+  const adminMsg=`Invoice sent to ${t.clientName} (${t.organization||'Independent'}) for ${fmtMoney(total)}.`;
+  addNotif(true,t.clientEmail,'Invoice Sent',clientMsg,t.id,currentRole);
+  addNotif(true,null,'Invoice Sent',adminMsg,t.id,currentRole);
+  sendEmailNotification(t.clientEmail,'Invoice Generated',clientMsg);
+  sendEmailNotification(data.admin.email,'Invoice Sent',adminMsg);
+  await saveData(); closeModal(); renderTickets(); renderDashboard(); renderNotifBadge(); printInvoice(id);
+}
+
+function printInvoice(id) {
+  const t=data.tickets.find(x=>x.id===id), rate=getTicketRate(t), total=t.hours*rate, desc=t.invoiceDescription||getTicketServiceName(t);
+  const w=window.open('','_blank');
+  w.document.write(`<html><head><title>Invoice #${t.id.slice(-5).toUpperCase()}</title><style>body{font-family:'Segoe UI',sans-serif;padding:40px;color:#2c3e50;max-width:800px;margin:0 auto}h1{color:#1e3a5f;border-bottom:3px solid #f6ad55;padding-bottom:10px}.meta{display:flex;justify-content:space-between;margin:20px 0}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:10px;text-align:left;border-bottom:1px solid #e2e8f0}th{background:#f7fafc}.total{text-align:right;font-size:20px;font-weight:700;color:#1e3a5f;margin-top:20px}.footer{margin-top:40px;font-size:12px;color:#718096;text-align:center;border-top:1px solid #e2e8f0;padding-top:20px}.disclaimer{background:#fff5f5;color:#9b2c2c;padding:12px;border-radius:6px;font-size:13px;margin-top:20px;border-left:4px solid #c53030}</style></head><body>
+    <h1>${data.admin.title}</h1><div style="color:#718096;">${data.admin.subtitle}<br/>${data.admin.email} • ${data.admin.phone}</div>
+    <div class="meta"><div><strong>Bill To:</strong><br/>${t.clientName}<br/>${t.clientEmail}<br/>${t.organization||'Independent'}</div><div style="text-align:right;"><strong>Invoice #:</strong> ${t.id.slice(-5).toUpperCase()}<br/><strong>Date:</strong> ${new Date().toLocaleDateString()}<br/><strong>Service Date:</strong> ${fmtDateNice(t.date)}</div></div>
+    <table><thead><tr><th>Description</th><th>Duration</th><th>Rate</th><th>Amount</th></tr></thead><tbody><tr><td>${desc}</td><td>${fmtDuration(t.hours)}</td><td>${fmtMoney(rate)}/hr</td><td>${fmtMoney(total)}</td></tr></tbody></table>
+    <div class="total">Total Due: ${fmtMoney(total)}</div>
+    <div class="disclaimer"><strong>Note:</strong> This is a system-generated invoice. For a formal TAX Invoice, please contact the consultant personally.</div>
+    <div class="footer">Thank you for your business.</div><script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  w.document.close();
+}
+
+function renderServices() {
+  const el=document.getElementById('servicesList'), sorted=getSortedServices();
+  const isA=currentRole==='admin';
+  
+  document.getElementById('servicesAdminOnly').innerHTML = isA ? '' : '<span style="font-size:12px; color:#718096; font-weight:normal;">(View only - only consultant can edit)</span>';
+  document.getElementById('addServiceBtn').style.display = isA ? '' : 'none';
+  
+  if (!sorted.length) { el.innerHTML='<p style="color:#718096;">No services defined yet.</p>'; return; }
+  
+  el.innerHTML=sorted.map(s=>{
+    let actions = '';
+    if (isA) {
+      actions = `<button class="btn small secondary" onclick="editService('${s.id}')">Edit</button><button class="btn small danger" onclick="removeService('${s.id}')">Remove</button>`;
+    }
+    return `<div class="service-block"><div class="svc-name">${s.name}</div><div class="svc-rate">${fmtMoney(s.rate)} / hr</div>${actions}</div>`;
+  }).join('');
+}
+
+function openAddService() {
+  if (currentRole !== 'admin') { alert('Only the consultant can add services.'); return; }
+  openModal(`<h3>Add New Service</h3><label>Service Name *</label><input id="svcName" placeholder="e.g., Tax Planning"/><label>Default Hourly Rate *</label><input id="svcRate" type="number" step="0.01" value="${data.admin.rate}"/><br/><br/><button class="btn" onclick="saveService()">Add Service</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
+}
+
+async function saveService() { 
+  if (currentRole !== 'admin') { alert('Only the consultant can add services.'); return; }
+  const n=document.getElementById('svcName').value.trim(), r=parseFloat(document.getElementById('svcRate').value); 
+  if (!n||!r||r<=0) { alert('Valid name and rate required.'); return; } 
+  data.services.push({id:uid(),name:n,rate:r}); 
+  await saveData(); 
+  closeModal(); 
+  renderServices(); 
+}
+
+function editService(id) { 
+  if (currentRole !== 'admin') { alert('Only the consultant can edit services.'); return; }
+  const s=data.services.find(x=>x.id===id); 
+  openModal(`<h3>Edit Service</h3><label>Service Name</label><input id="svcName" value="${s.name}"/><label>Hourly Rate</label><input id="svcRate" type="number" step="0.01" value="${s.rate}"/><br/><br/><button class="btn" onclick="updateService('${id}')">Save</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`); 
+}
+
+async function updateService(id) { 
+  if (currentRole !== 'admin') { alert('Only the consultant can edit services.'); return; }
+  const s=data.services.find(x=>x.id===id), n=document.getElementById('svcName').value.trim(), r=parseFloat(document.getElementById('svcRate').value); 
+  if (!n||!r||r<=0) { alert('Valid name and rate required.'); return; } 
+  s.name=n; s.rate=r; 
+  await saveData(); 
+  closeModal(); 
+  renderServices(); 
+}
+
+async function removeService(id) { 
+  if (currentRole !== 'admin') { alert('Only the consultant can remove services.'); return; }
+  if (!confirm('Remove this service?')) return; 
+  data.services=data.services.filter(s=>s.id!==id); 
+  await saveData(); 
+  renderServices(); 
+}
+
+function openAddClient() { openModal(`<h3>Add Client</h3><label>Full Name *</label><input id="acName"/><label>Email *</label><input id="acEmail" type="email"/><label>Organization</label><input id="acOrg"/><br/><br/><button class="btn" onclick="saveClient()">Add</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`); }
+
+async function saveClient() { const n=document.getElementById('acName').value.trim(), e=document.getElementById('acEmail').value.trim().toLowerCase(), o=document.getElementById('acOrg').value.trim(); if (!n||!e) { alert('Required.'); return; } if (data.clients.some(c=>c.email===e)) { alert('Exists.'); return; } data.clients.push({id:uid(),name:n,email:e,organization:o,createdAt:new Date().toISOString()}); await saveData(); closeModal(); renderClients(); }
+
+async function removeClient(id) { if (!confirm('Remove?')) return; data.clients=data.clients.filter(c=>c.id!==id); await saveData(); renderClients(); }
+
+async function addDomain() { let d=document.getElementById('newDomain').value.trim().toLowerCase(); if (!d.startsWith('@')) d='@'+d; if (!data.domains.includes(d)) { data.domains.push(d); await saveData(); renderClients(); } document.getElementById('newDomain').value=''; }
+
+async function removeDomain(d) { data.domains=data.domains.filter(x=>x!==d); await saveData(); renderClients(); }
+
+function renderClients() {
+  const tb=document.querySelector('#clientsTable tbody');
+  if (!data.clients.length) { tb.innerHTML='<tr><td colspan="5" style="text-align:center; color:#718096;">No clients.</td></tr>'; }
+  else tb.innerHTML=data.clients.map(c=>`<tr><td>${c.name}</td><td>${c.email}</td><td>${c.organization||'-'}</td><td>${new Date(c.createdAt).toLocaleDateString()}</td><td><button class="btn small danger" onclick="removeClient('${c.id}')">Remove</button></td></tr>`).join('');
+  const dl=document.getElementById('domainList');
+  if (!data.domains.length) dl.innerHTML='<p style="color:#718096; font-size:13px;">No domains.</p>';
+  else dl.innerHTML=data.domains.map(d=>`<div class="avail-block">${d} <button class="remove" onclick="removeDomain('${d}')">×</button></div>`).join('');
+}
+
+function renderCalendar() {
+  const grid=document.getElementById('calendarGrid'), days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let h=days.map(d=>`<div class="cal-header">${d}</div>`).join('');
+  const today=fmtDate(new Date());
+  for (let i=0;i<7;i++) {
+    const d=new Date(currentWeekStart); d.setDate(d.getDate()+i); const ds=fmtDate(d);
+    const isP=ds<today, isT=ds===today;
+    const bl=data.blocked.filter(b=>b.date===ds).length, bk=data.tickets.filter(t=>t.date===ds&&(t.status==='booked'||t.status==='completed'||t.status==='invoiced')).length;
+    let sl=''; if (bl) sl+=`<div class="slots" style="color:#c53030;">🚫 ${bl} blocked</div>`; if (bk) sl+=`<div class="slots" style="color:#2b6cb0;">📅 ${bk} booked</div>`;
+    h+=`<div class="cal-day ${isP?'past':''} ${isT?'today':''}" onclick="${isP?'':"openDayModal('"+ds+"')"}"><div class="date-num">${d.getDate()}</div><div style="font-size:10px; color:#a0aec0;">${d.toLocaleDateString('en-US',{month:'short'})}</div>${sl}</div>`;
+  }
+  grid.innerHTML=h;
+  const end=new Date(currentWeekStart); end.setDate(end.getDate()+6);
+  document.getElementById('weekLabel').textContent=currentWeekStart.toLocaleDateString('en-US',{month:'long',day:'numeric'})+' – '+end.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  renderBlockedSlots();
+}
+
+function changeWeek(dir) { currentWeekStart.setDate(currentWeekStart.getDate()+dir*7); renderCalendar(); }
+
+function renderBlockedSlots() {
+  const el=document.getElementById('blockedSlotsList');
+  if (!data.blocked.length) { el.innerHTML='<p style="color:#718096; font-size:13px;">No blocked slots.</p>'; return; }
+  el.innerHTML=data.blocked.slice().sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start)).map(b=>`<div class="avail-block">${fmtDateNice(b.date)} • ${b.start} – ${b.end} <button class="remove" onclick="removeBlock('${b.date}','${b.start}','${b.end}')">×</button></div>`).join('');
+}
+
+function openDayModal(ds) { openModal(`<h3>Block Time – ${fmtDateNice(ds)}</h3><p style="font-size:13px; color:#718096; margin-bottom:10px;">Default: 8:00 AM – 8:00 PM.</p><label>Start</label><select id="bStart">${timeOptions()}</select><label>End</label><select id="bEnd">${timeOptions()}</select><br/><br/><button class="btn" onclick="addBlock('${ds}')">Block</button> <button class="btn secondary" onclick="closeModal()">Close</button>`); }
+
+async function addBlock(ds) { const s=document.getElementById('bStart').value, e=document.getElementById('bEnd').value; if (s>=e) { alert('End must be after start.'); return; } data.blocked.push({date:ds,start:s,end:e}); await saveData(); closeModal(); renderCalendar(); }
+
+async function removeBlock(d,s,e) { data.blocked=data.blocked.filter(b=>!(b.date===d&&b.start===s&&b.end===e)); await saveData(); renderCalendar(); }
+
+function addNotif(forAdmin,clientEmail,type,message,ticketId,source) {
+  data.notifications.push({id:uid(),forAdmin,clientEmail,type,message,ticketId,source:source||'admin',read:false,createdAt:new Date().toISOString()});
+}
+
+function notifSourceTag(n) {
+  const s=n.source||'admin';
+  const l={client:'🧑 Client',assistant:'👨💼 Assistant',admin:'👤 Consultant'};
+  return `<span class="modifier-tag ${s}" style="margin-left:6px;">${l[s]||l.admin}</span>`;
+}
+
+function matchesFilter(notifType, filter) {
+  if (filter==='all') return true;
+  const map = {
+    'raised': ['Ticket Raised','New Ticket'],
+    'accepted': ['Ticket Accepted'],
+    'booked': ['Appointment Booked','Appointment Rescheduled','Appointment Scheduled'],
+    'completed': ['Consultation Completed'],
+    'invoiced': ['Invoice Sent'],
+    'cancelled': ['Appointment Cancelled']
+  };
+  return (map[filter]||[]).some(k => notifType.includes(k));
+}
+
+function setNotifFilter(f,el) {
+  adminNotifFilter=f;
+  document.querySelectorAll('#notifFilters .filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderNotifications();
+}
+
+function setClientNotifFilter(f,el) {
+  clientNotifFilter=f;
+  document.querySelectorAll('#clientNotifFilters .filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderClientNotifs();
+}
+
+function renderNotifications() {
+  const list=document.getElementById('notifList');
+  const mine=data.notifications.filter(n=>n.forAdmin&&matchesFilter(n.type,adminNotifFilter)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  if (!mine.length) { list.innerHTML='<p style="color:#718096;">No notifications.</p>'; return; }
+  list.innerHTML=mine.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><strong>${n.type}</strong>${notifSourceTag(n)}<br/>${n.message}<div class="time">${new Date(n.createdAt).toLocaleString()}</div><button class="delete-btn" onclick="deleteNotif('${n.id}',true)" title="Delete">🗑️</button></div>`).join('');
+}
+
+function renderNotifBadge() { document.getElementById('notifCount').textContent=data.notifications.filter(n=>n.forAdmin&&!n.read).length?'('+data.notifications.filter(n=>n.forAdmin&&!n.read).length+')':''; }
+
+async function markAllRead() { data.notifications.forEach(n=>{if(n.forAdmin)n.read=true;}); await saveData(); renderNotifications(); renderNotifBadge(); }
+
+async function deleteNotif(id,isA) { data.notifications=data.notifications.filter(n=>n.id!==id); await saveData(); if(isA){renderNotifications();renderNotifBadge();}else renderClientNotifs(); }
+
+function loadSettings() {
+  document.getElementById('setTitle').value=data.admin.title;
+  document.getElementById('setSubtitle').value=data.admin.subtitle;
+  document.getElementById('setEmail').value=data.admin.email;
+  document.getElementById('setPhone').value=data.admin.phone;
+  document.getElementById('setRate').value=data.admin.rate;
+  document.getElementById('setCurrency').value=data.admin.currency;
+  document.getElementById('setAssistantEnabled').checked=data.assistant.enabled;
+  document.getElementById('setAssistantEmail').value=data.assistant.email;
+  document.getElementById('setEjsPub').value=data.admin.ejsPub||'';
+  document.getElementById('setEjsServ').value=data.admin.ejsServ||'';
+  document.getElementById('setEjsTemp').value=data.admin.ejsTemp||'';
+  document.getElementById('setPass').value='';
+}
+
+async function saveSettings() {
+  data.admin.title=document.getElementById('setTitle').value||'Financial Consultant Portal';
+  data.admin.subtitle=document.getElementById('setSubtitle').value;
+  data.admin.email=document.getElementById('setEmail').value;
+  data.admin.phone=document.getElementById('setPhone').value;
+  data.admin.rate=parseFloat(document.getElementById('setRate').value)||0;
+  data.admin.currency=document.getElementById('setCurrency').value;
+  data.assistant.enabled=document.getElementById('setAssistantEnabled').checked;
+  data.assistant.email=document.getElementById('setAssistantEmail').value.trim();
+  data.admin.ejsPub=document.getElementById('setEjsPub').value.trim();
+  data.admin.ejsServ=document.getElementById('setEjsServ').value.trim();
+  data.admin.ejsTemp=document.getElementById('setEjsTemp').value.trim();
+  
+  const np=document.getElementById('setPass').value;
+  if (np) {
+    try {
+      const user = auth.currentUser;
+      await user.updatePassword(np);
+      alert('Password updated successfully.');
+    } catch (error) {
+      alert('Password update failed: ' + error.message);
+      return;
+    }
+  }
+  
+  await saveData();
+  renderAll();
+  alert('Settings saved.');
+}
+
+function renderClientTickets() {
+  const tb=document.querySelector('#myTicketsTable tbody'), mine=data.tickets.filter(t=>t.clientEmail===currentClient.email);
+  if (!mine.length) { tb.innerHTML='<tr><td colspan="7" style="text-align:center; color:#718096;">No tickets yet.</td></tr>'; return; }
+  tb.innerHTML=mine.slice().reverse().map(t=>{
+    let a='';
+    if (t.status==='raised'||t.status==='accepted') a=`<button class="btn small warn" onclick="clientRescheduleTicket('${t.id}')">Reschedule</button> <button class="btn small danger" onclick="clientCancelTicket('${t.id}')">Cancel</button>`;
+    if (t.status==='invoiced') a+=` <button class="btn small" onclick="printInvoice('${t.id}')">Download Invoice</button>`;
+    return `<tr><td>#${t.id.slice(-5).toUpperCase()}</td><td>${getTicketServiceName(t)}<br/><small style="color:#718096;">${fmtMoney(getTicketRate(t))}/hr</small></td><td>${fmtDateNice(t.date)}</td><td>${t.startTime}</td><td>${fmtDuration(t.hours)}</td><td><span class="badge ${t.status}">${t.status}</span></td><td>${a}</td></tr>`;
+  }).join('');
+}
+
+function renderClientNotifs() {
+  const list=document.getElementById('clientNotifList');
+  const mine=data.notifications.filter(n=>n.clientEmail===currentClient.email&&matchesFilter(n.type,clientNotifFilter)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  if (!mine.length) { list.innerHTML='<p style="color:#718096;">No notifications.</p>'; return; }
+  list.innerHTML=mine.map(n=>`<div class="notif-item ${n.read?'':'unread'}"><strong>${n.type}</strong><br/>${n.message}<div class="time">${new Date(n.createdAt).toLocaleString()}</div><button class="delete-btn" onclick="deleteNotif('${n.id}',false)" title="Delete">🗑️</button></div>`).join('');
+  mine.forEach(n=>n.read=true); saveData();
+}
+
+async function clientCancelTicket(id) {
+  if (!confirm('Cancel?')) return; const t=data.tickets.find(x=>x.id===id);
+  t.status='cancelled'; t.lastModifiedBy='client'; t.lastModifiedAt=new Date().toISOString(); t.updatedAt=new Date().toISOString();
+  const clientMsg = buildClientNotifMessage(t, 'has been cancelled by you.');
+  const adminMsg = buildNotifMessage(t, 'cancelled by client.');
+  addNotif(true,t.clientEmail,'Appointment Cancelled',clientMsg,t.id,'client');
+  addNotif(true,null,'Appointment Cancelled',adminMsg,t.id,'client');
+  sendEmailNotification(t.clientEmail,'Appointment Cancelled',clientMsg);
+  sendEmailNotification(data.admin.email,'Client Cancelled',adminMsg);
+  await saveData(); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
+}
+
+function clientRescheduleTicket(id) {
+  const t=data.tickets.find(x=>x.id===id);
+  if (t.status!=='raised'&&t.status!=='accepted') { alert('Cannot reschedule.'); return; }
+  const max=fmtDate(addDays(new Date(),7));
+  openModal(`<h3>Reschedule Your Appointment</h3><p style="font-size:13px; color:#718096;">Current: ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)})</p>
+    <label>New Date</label><input id="rsDate" type="date" min="${fmtDate(new Date())}" max="${max}" onchange="updateAvailableTimes('rsDate','rsTime','rsDurH','rsDurM')"/>
+    <label>New Start Time</label><select id="rsTime"></select>
+    <label>New Duration</label>${buildDialHTML('rsDurH','rsDurM')}
+    <br/><br/><button class="btn" onclick="saveClientReschedule('${id}')">Confirm</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
+  const tm=Math.round(t.hours*60);
+  setTimeout(()=>{ setDialValue('rsDurH','rsDurM',tm); updateAvailableTimes('rsDate','rsTime','rsDurH','rsDurM'); },50);
+}
+
+async function saveClientReschedule(id) {
+  const t=data.tickets.find(x=>x.id===id);
+  t.date=document.getElementById('rsDate').value; t.startTime=document.getElementById('rsTime').value;
+  t.hours=getDialHours('rsDurH','rsDurM'); t.status='raised'; t.lastModifiedBy='client'; t.lastModifiedAt=new Date().toISOString(); t.updatedAt=new Date().toISOString();
+  const clientMsg = buildClientNotifMessage(t, 'has been rescheduled and is awaiting confirmation.');
+  const adminMsg = buildNotifMessage(t, 'rescheduled by client.');
+  addNotif(true,t.clientEmail,'Appointment Rescheduled',clientMsg,t.id,'client');
+  addNotif(true,null,'Client Rescheduled',adminMsg,t.id,'client');
+  sendEmailNotification(t.clientEmail,'Appointment Rescheduled',clientMsg);
+  sendEmailNotification(data.admin.email,'Client Rescheduled',adminMsg);
+  await saveData(); closeModal(); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
+}
+
+function buildDialHTML(hId, mId) {
+  return `<div class="dial-wrap">
+    <div class="dial-col"><button onclick="dialUp('${hId}',0,12)">▲</button><div class="dial-val" id="${hId}">01</div><button onclick="dialDown('${hId}',0,12)">▼</button><div class="dial-label">Hours</div></div>
+    <div class="dial-sep">:</div>
+    <div class="dial-col"><button onclick="dialUp('${mId}',0,45,15)">▲</button><div class="dial-val" id="${mId}">00</div><button onclick="dialDown('${mId}',0,45,15)">▼</button><div class="dial-label">Mins</div></div>
+  </div>`;
+}
+
+function dialUp(id, min, max, step) {
+  step = step || 1;
+  let v = parseInt(document.getElementById(id).textContent) + step;
+  if (v > max) v = min;
+  document.getElementById(id).textContent = String(v).padStart(2, '0');
+}
+
+function dialDown(id, min, max, step) {
+  step = step || 1;
+  let v = parseInt(document.getElementById(id).textContent) - step;
+  if (v < min) v = max;
+  document.getElementById(id).textContent = String(v).padStart(2, '0');
+}
+
+function setDialValue(hId, mId, totalMins) {
+  document.getElementById(hId).textContent = String(Math.floor(totalMins / 60)).padStart(2, '0');
+  document.getElementById(mId).textContent = String(totalMins % 60).padStart(2, '0');
+}
+
+function getDialHours(hId, mId) {
+  const h = parseInt(document.getElementById(hId).textContent);
+  const m = parseInt(document.getElementById(mId).textContent);
+  return (h * 60 + m) / 60;
+}
+
+function buildServiceDropdown(selId) {
+  const sel=document.getElementById(selId), sorted=getSortedServices();
+  sel.innerHTML=sorted.map(s=>`<option value="${s.id}" data-rate="${s.rate}">${s.name} (${fmtMoney(s.rate)}/hr)</option>`).join('')+`<option value="__new__">+ Create New Service...</option>`;
+}
+
+function handleServiceChange(selId, rateId) {
+  const sel=document.getElementById(selId), ri=document.getElementById(rateId);
+  const isClient = currentClient && !currentRole;
+  
+  if (sel.value==='__new__') {
+    const n=prompt('Service name:'); 
+    if (!n) { sel.value=data.services[0]?.id||''; return; }
+    
+    const r = isClient ? data.admin.rate : parseFloat(prompt('Hourly rate:', data.admin.rate));
+    
+    if (!isClient && (!r || r<=0)) { 
+      sel.value=data.services[0]?.id||''; 
+      return; 
+    }
+    
+    const ns={id:uid(),name:n,rate:r}; 
+    data.services.push(ns); 
+    saveData(); 
+    buildServiceDropdown(selId); 
+    sel.value=ns.id; 
+    ri.value=r;
+  } else { 
+    ri.value=sel.options[sel.selectedIndex].dataset.rate; 
+  }
+}
+
+function openNewTicket() {
+  const today=fmtDate(new Date()), max=fmtDate(addDays(new Date(),7));
+  openModal(`<h3>Request Consultation</h3>
+    <label>Service *</label><select id="ntService" onchange="handleServiceChange('ntService','ntRate')"></select>
+    <label>Hourly Rate (set by consultant)</label><input id="ntRate" type="number" step="0.01" readonly style="background:#f7fafc;"/>
+    <label>Date *</label><input id="ntDate" type="date" min="${today}" max="${max}" onchange="updateAvailableTimes('ntDate','ntTime','ntDurH','ntDurM')"/>
+    <label>Start Time *</label><select id="ntTime"><option value="">Select date first</option></select>
+    <label>Duration *</label>${buildDialHTML('ntDurH','ntDurM')}
+    <label>Message (optional)</label><textarea id="ntMsg" placeholder="Topics or notes..."></textarea>
+    <br/><br/><button class="btn" onclick="submitTicket()">Submit</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
+  buildServiceDropdown('ntService'); handleServiceChange('ntService','ntRate');
+  setDialValue('ntDurH','ntDurM',60);
+}
+
+function openAddTicketForClient() {
+  const today=fmtDate(new Date()), max=fmtDate(addDays(new Date(),7));
+  const co=data.clients.map(c=>`<option value="${c.email}">${c.name} (${c.email})</option>`).join('');
+  openModal(`<h3>Add Ticket for Client</h3>
+    <label>Client *</label><select id="atClient"><option value="">-- Choose --</option>${co}</select>
+    <label>Service *</label><select id="atService" onchange="handleServiceChange('atService','atRate')"></select>
+    <label>Hourly Rate (editable)</label><input id="atRate" type="number" step="0.01" style="background:white;"/>
+    <label>Date *</label><input id="atDate" type="date" min="${today}" max="${max}" onchange="updateAvailableTimes('atDate','atTime','atDurH','atDurM')"/>
+    <label>Start Time *</label><select id="atTime"><option value="">Select date first</option></select>
+    <label>Duration *</label>${buildDialHTML('atDurH','atDurM')}
+    <label>Message</label><textarea id="atMsg" placeholder="Notes..."></textarea>
+    <br/><br/><button class="btn" onclick="submitStaffTicket()">Create</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
+  buildServiceDropdown('atService'); handleServiceChange('atService','atRate');
+  setDialValue('atDurH','atDurM',60);
+}
+
+function updateAvailableTimes(dateId, timeId, hId, mId) {
+  const d=document.getElementById(dateId).value, sel=document.getElementById(timeId);
+  const hrs=getDialHours(hId,mId); if (!d) return;
+  let h='';
+  for (let mins=8*60; mins<20*60; mins+=15) { if (isTimeAvailable(d,minsToTime(mins),hrs)) h+=`<option value="${minsToTime(mins)}">${minsToTime(mins)}</option>`; }
+  sel.innerHTML=h||'<option disabled>No slots available</option>';
+}
+
+function isTimeAvailable(date,startTime,hours) {
+  const sm=timeToMins(startTime), em=sm+Math.round(hours*60);
+  if (em>20*60) return false;
+  for (let b of data.blocked) { if (b.date===date) { const bs=timeToMins(b.start),be=timeToMins(b.end); if (sm<be&&em>bs) return false; } }
+  for (let t of data.tickets) { if (t.date===date&&(t.status==='booked'||t.status==='accepted'||t.status==='completed')) { const ts=timeToMins(t.startTime),te=ts+Math.round(t.hours*60); if (sm<te&&em>ts) return false; } }
+  return true;
+}
+
+async function submitTicket() {
+  const svc=data.services.find(s=>s.id===document.getElementById('ntService').value);
+  const date=document.getElementById('ntDate').value, time=document.getElementById('ntTime').value;
+  const hours=getDialHours('ntDurH','ntDurM'), msg=document.getElementById('ntMsg').value.trim();
+  if (!svc||!date||!time||hours<=0) { alert('Fill all fields.'); return; }
+  if (!isTimeAvailable(date,time,hours)) { alert('Slot unavailable.'); return; }
+  const t={id:uid(),clientName:currentClient.name,clientEmail:currentClient.email,organization:currentClient.organization||'Independent',serviceId:svc.id,serviceName:svc.name,serviceRate:svc.rate,date,startTime:time,hours,message:msg,status:'raised',lastModifiedBy:'client',lastModifiedAt:new Date().toISOString(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  data.tickets.push(t);
+  const clientMsg = buildClientNotifMessage(t, 'has been received.');
+  const adminMsg = buildNotifMessage(t, 'raised a new ticket.');
+  addNotif(true,currentClient.email,'Ticket Raised',clientMsg,t.id,'client');
+  addNotif(true,null,'New Ticket',adminMsg,t.id,'client');
+  sendEmailNotification(currentClient.email,'Request Received',clientMsg);
+  sendEmailNotification(data.admin.email,'New Ticket Raised',adminMsg);
+  await saveData(); closeModal(); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
+}
+
+async function submitStaffTicket() {
+  const ce=document.getElementById('atClient').value, svc=data.services.find(s=>s.id===document.getElementById('atService').value);
+  const date=document.getElementById('atDate').value, time=document.getElementById('atTime').value;
+  const hours=getDialHours('atDurH','atDurM'), msg=document.getElementById('atMsg').value.trim();
+  const customRate=parseFloat(document.getElementById('atRate').value);
+  if (!ce||!svc||!date||!time||hours<=0||!customRate||customRate<=0) { alert('Fill all fields with valid values.'); return; }
+  const client=data.clients.find(c=>c.email===ce); if (!client) { alert('Client not found.'); return; }
+  if (!isTimeAvailable(date,time,hours)) { alert('Slot unavailable.'); return; }
+  const t={id:uid(),clientName:client.name,clientEmail:client.email,organization:client.organization||'Independent',serviceId:svc.id,serviceName:svc.name,serviceRate:customRate,date,startTime:time,hours,message:msg,status:'raised',lastModifiedBy:currentRole,lastModifiedAt:new Date().toISOString(),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  data.tickets.push(t);
+  const clientMsg = buildClientNotifMessage(t, 'has been scheduled by our team.');
+  const adminMsg = buildNotifMessage(t, `ticket created by ${currentRole==='admin'?'consultant':'assistant'}.`);
+  addNotif(true,client.email,'Appointment Scheduled',clientMsg,t.id,currentRole);
+  addNotif(true,null,'Ticket Created',adminMsg,t.id,currentRole);
+  sendEmailNotification(client.email,'Appointment Scheduled',clientMsg);
+  sendEmailNotification(data.admin.email,'Ticket Created',adminMsg);
+  await saveData(); closeModal(); renderTickets(); renderDashboard(); renderNotifBadge();
+}
+
+function timeOptions() { let h=''; for (let m=8*60;m<20*60;m+=15) h+=`<option value="${minsToTime(m)}">${minsToTime(m)}</option>`; return h; }
+
+function openModal(html) { document.getElementById('modalContainer').innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`; }
+
+function closeModal() { document.getElementById('modalContainer').innerHTML=''; }
+</script>
+</body>
+</html>
