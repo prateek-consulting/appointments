@@ -4,9 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Financial Consultant Portal</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f0f4f8'/><text y='.9em' x='18' font-size='90' font-weight='bold' font-family='Arial, sans-serif' fill='%230056b3'>P</text></svg>">
-
- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1a202c; line-height: 1.5; }
@@ -116,13 +114,13 @@
 
 <div id="clientLanding" class="landing-wrap">
   <div class="client-card">
-    <div class="logo">PFC</div>
-    <h1 id="landingTitle">Prateek's Financial Consultant Portal</h1>
+    <div class="logo">FC</div>
+    <h1 id="landingTitle">Financial Consultant Portal</h1>
     <p id="landingSubtitle">Professional financial advisory services</p>
     <div id="landingAlert"></div>
     <input id="clientEmailInput" type="email" placeholder="Enter your registered email address" />
     <button class="btn-primary" onclick="clientLogin()">Access Client Portal</button>
-    <div class="admin-link">Staff access? <a href="#" onclick="showAdminLogin(); return false;">Admin Login</a></div>
+    <div class="admin-link">Staff access? <a href="#" onclick="showAdminLogin(); return false;">Admin / Assistant Login</a></div>
   </div>
 </div>
 
@@ -269,6 +267,31 @@
         <label>EmailJS Service ID</label><input id="setEjsServ" placeholder="e.g., service_xyz"/>
         <label>EmailJS Template ID</label><input id="setEjsTemp" placeholder="e.g., template_123"/>
         <hr style="margin:20px 0; border:0; border-top:1px solid #e2e8f0;"/>
+        <h3>Email Notification Preferences</h3>
+        <p style="font-size:12px; color:#718096; margin-bottom:10px;">Choose which events send real emails. In-app notifications always work regardless.</p>
+        <div class="row">
+          <div>
+            <label style="font-weight:700; color:#2d3748;">Emails to Clients</label>
+            <label><input type="checkbox" id="pfC_raised" style="width:auto; margin-right:6px;"/>New request raised</label>
+            <label><input type="checkbox" id="pfC_accepted" style="width:auto; margin-right:6px;"/>Request accepted</label>
+            <label><input type="checkbox" id="pfC_booked" style="width:auto; margin-right:6px;"/>Appointment booked</label>
+            <label><input type="checkbox" id="pfC_rescheduled" style="width:auto; margin-right:6px;"/>Rescheduled</label>
+            <label><input type="checkbox" id="pfC_cancelled" style="width:auto; margin-right:6px;"/>Cancelled</label>
+            <label><input type="checkbox" id="pfC_completed" style="width:auto; margin-right:6px;"/>Completed</label>
+            <label><input type="checkbox" id="pfC_invoiced" style="width:auto; margin-right:6px;"/>Invoice sent</label>
+          </div>
+          <div>
+            <label style="font-weight:700; color:#2d3748;">Emails to Me (Consultant)</label>
+            <label><input type="checkbox" id="pfA_raised" style="width:auto; margin-right:6px;"/>New request raised</label>
+            <label><input type="checkbox" id="pfA_accepted" style="width:auto; margin-right:6px;"/>Request accepted</label>
+            <label><input type="checkbox" id="pfA_booked" style="width:auto; margin-right:6px;"/>Appointment booked</label>
+            <label><input type="checkbox" id="pfA_rescheduled" style="width:auto; margin-right:6px;"/>Rescheduled</label>
+            <label><input type="checkbox" id="pfA_cancelled" style="width:auto; margin-right:6px;"/>Cancelled</label>
+            <label><input type="checkbox" id="pfA_completed" style="width:auto; margin-right:6px;"/>Completed</label>
+            <label><input type="checkbox" id="pfA_invoiced" style="width:auto; margin-right:6px;"/>Invoice sent</label>
+          </div>
+        </div>
+        <hr style="margin:20px 0; border:0; border-top:1px solid #e2e8f0;"/>
         <label>Change Admin Password (leave blank to keep current)</label><input id="setPass" type="password"/>
         <br/><br/>
         <button class="btn" onclick="saveSettings()">Save Settings</button>
@@ -361,19 +384,28 @@ function checkSessionOnLoad() {
 }
 
 /* ============ DATA (localStorage) ============ */
+const EV_KEYS = ['raised','accepted','booked','rescheduled','cancelled','completed','invoiced'];
+function defaultPrefs() {
+  const p = { client: {}, admin: {} };
+  EV_KEYS.forEach(k => { p.client[k] = true; p.admin[k] = true; });
+  return p;
+}
 const DB = {
   load() {
     const d = JSON.parse(localStorage.getItem('fcData')||'null');
     if (d) {
       if (!d.assistant) d.assistant = { user:'assistant', pass:'assistant123', enabled:false };
       if (!d.services) d.services = [{ id:uid(), name:'General Consultation', rate: d.admin.rate||100 }];
+      if (!d.prefs) d.prefs = defaultPrefs();
+      EV_KEYS.forEach(k => { if (d.prefs.client[k] === undefined) d.prefs.client[k] = true; if (d.prefs.admin[k] === undefined) d.prefs.admin[k] = true; });
       return d;
     }
     return {
       admin: { user:'admin', pass:'admin123', title:'Financial Consultant Portal', subtitle:'Professional financial advisory services', email:'consultant@example.com', phone:'+1 555 000 0000', rate:100, currency:'USD', ejsPub:'', ejsServ:'', ejsTemp:'' },
       assistant: { user:'assistant', pass:'assistant123', enabled:false },
       clients: [], domains: [], tickets: [], blocked: [], notifications: [],
-      services: [{ id:uid(), name:'General Consultation', rate:100 }]
+      services: [{ id:uid(), name:'General Consultation', rate:100 }],
+      prefs: defaultPrefs()
     };
   },
   save(d) { localStorage.setItem('fcData', JSON.stringify(d)); }
@@ -400,8 +432,12 @@ function getSortedServices() { return data.services.slice().sort((a,b)=>a.name.l
 function buildNotifMessage(t, actionVerb) { const org=t.organization||'Independent'; return `${t.clientName} (${org}) — ${getTicketServiceName(t)} on ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)}) ${actionVerb}`; }
 function buildClientNotifMessage(t, actionText) { return `Your ${getTicketServiceName(t)} appointment on ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)}) ${actionText}`; }
 
-/* ============ EMAIL ============ */
-function sendEmailNotification(to,subject,msg) {
+/* ============ EMAIL (respects preferences) ============ */
+function sendEmailNotification(to, subject, msg, event, audience) {
+  if (data.prefs && data.prefs[audience] && data.prefs[audience][event] === false) {
+    console.log(`[EMAIL SKIPPED by preference] ${audience}/${event} → ${to}`);
+    return;
+  }
   if (data.admin.ejsPub&&data.admin.ejsServ&&data.admin.ejsTemp) { emailjs.init(data.admin.ejsPub); emailjs.send(data.admin.ejsServ,data.admin.ejsTemp,{to_email:to,from_name:data.admin.title,reply_to:data.admin.email,subject,message:msg}).catch(()=>{}); }
   else console.log(`[MOCK] To:${to} | ${subject} | ${msg}`);
 }
@@ -524,19 +560,19 @@ function renderTickets() {
   }).join('');
 }
 function deleteTicket(id) { if (!confirm('Permanently delete?')) return; data.tickets=data.tickets.filter(t=>t.id!==id); DB.save(data); renderTickets(); renderDashboard(); renderNotifBadge(); }
-function acceptTicket(id) { updateTicketStatus(id,'accepted','Ticket Accepted','has been accepted.',currentRole); }
-function bookTicket(id) { updateTicketStatus(id,'booked','Appointment Booked','has been confirmed.',currentRole); }
-function completeTicket(id) { updateTicketStatus(id,'completed','Consultation Completed','has been marked as completed.',currentRole); }
-function cancelTicket(id) { if (!confirm('Cancel this ticket?')) return; updateTicketStatus(id,'cancelled','Appointment Cancelled','has been cancelled.',currentRole); }
-function updateTicketStatus(id,ns,type,actionText,mod) {
+function acceptTicket(id) { updateTicketStatus(id,'accepted','Ticket Accepted','has been accepted.',currentRole,'accepted'); }
+function bookTicket(id) { updateTicketStatus(id,'booked','Appointment Booked','has been confirmed.',currentRole,'booked'); }
+function completeTicket(id) { updateTicketStatus(id,'completed','Consultation Completed','has been marked as completed.',currentRole,'completed'); }
+function cancelTicket(id) { if (!confirm('Cancel this ticket?')) return; updateTicketStatus(id,'cancelled','Appointment Cancelled','has been cancelled.',currentRole,'cancelled'); }
+function updateTicketStatus(id,ns,type,actionText,mod,event) {
   const t=data.tickets.find(x=>x.id===id);
   t.status=ns; t.lastModifiedBy=mod; t.lastModifiedAt=new Date().toISOString(); t.updatedAt=new Date().toISOString();
   const clientMsg = buildClientNotifMessage(t, actionText);
   const adminMsg = buildNotifMessage(t, actionText.replace('has been ','').replace('has ',''));
   addNotif(true,t.clientEmail,type,clientMsg,t.id,mod);
   addNotif(true,null,type,adminMsg,t.id,mod);
-  sendEmailNotification(t.clientEmail,`${type}: ${t.clientName}`,clientMsg);
-  sendEmailNotification(data.admin.email,`${type}`,adminMsg);
+  sendEmailNotification(t.clientEmail,`${type}: ${t.clientName}`,clientMsg,event,'client');
+  sendEmailNotification(data.admin.email,`${type}`,adminMsg,event,'admin');
   DB.save(data); renderTickets(); renderDashboard(); renderNotifBadge();
 }
 function rescheduleTicket(id) {
@@ -556,7 +592,7 @@ function saveReschedule(id) {
   t.startTime=document.getElementById('rsTime').value;
   t.hours=getDialHours('rsDurH','rsDurM');
   t.lastModifiedBy=currentRole; t.lastModifiedAt=new Date().toISOString();
-  updateTicketStatus(id,'booked','Appointment Rescheduled','has been rescheduled to '+fmtDateNice(t.date)+' at '+t.startTime+' ('+fmtDuration(t.hours)+')',currentRole);
+  updateTicketStatus(id,'booked','Appointment Rescheduled','has been rescheduled to '+fmtDateNice(t.date)+' at '+t.startTime+' ('+fmtDuration(t.hours)+')',currentRole,'rescheduled');
   closeModal();
 }
 
@@ -576,8 +612,8 @@ function finalizeInvoice(id) {
   const adminMsg=`Invoice sent to ${t.clientName} (${t.organization||'Independent'}) for ${fmtMoney(total)}.`;
   addNotif(true,t.clientEmail,'Invoice Sent',clientMsg,t.id,currentRole);
   addNotif(true,null,'Invoice Sent',adminMsg,t.id,currentRole);
-  sendEmailNotification(t.clientEmail,'Invoice Generated',clientMsg);
-  sendEmailNotification(data.admin.email,'Invoice Sent',adminMsg);
+  sendEmailNotification(t.clientEmail,'Invoice Generated',clientMsg,'invoiced','client');
+  sendEmailNotification(data.admin.email,'Invoice Sent',adminMsg,'invoiced','admin');
   DB.save(data); closeModal(); renderTickets(); renderDashboard(); renderNotifBadge(); printInvoice(id);
 }
 function printInvoice(id) {
@@ -710,6 +746,10 @@ function loadSettings() {
   document.getElementById('setEjsPub').value=data.admin.ejsPub||'';
   document.getElementById('setEjsServ').value=data.admin.ejsServ||'';
   document.getElementById('setEjsTemp').value=data.admin.ejsTemp||'';
+  EV_KEYS.forEach(k=>{
+    document.getElementById('pfC_'+k).checked = data.prefs.client[k] !== false;
+    document.getElementById('pfA_'+k).checked = data.prefs.admin[k] !== false;
+  });
   document.getElementById('setPass').value='';
 }
 function saveSettings() {
@@ -726,6 +766,10 @@ function saveSettings() {
   data.admin.ejsPub=document.getElementById('setEjsPub').value.trim();
   data.admin.ejsServ=document.getElementById('setEjsServ').value.trim();
   data.admin.ejsTemp=document.getElementById('setEjsTemp').value.trim();
+  EV_KEYS.forEach(k=>{
+    data.prefs.client[k]=document.getElementById('pfC_'+k).checked;
+    data.prefs.admin[k]=document.getElementById('pfA_'+k).checked;
+  });
   const np=document.getElementById('setPass').value;
   if (np) data.admin.pass=np;
   DB.save(data); renderAll(); alert('Settings saved.');
@@ -756,8 +800,8 @@ function clientCancelTicket(id) {
   const adminMsg = buildNotifMessage(t, 'cancelled by client.');
   addNotif(true,t.clientEmail,'Appointment Cancelled',clientMsg,t.id,'client');
   addNotif(true,null,'Appointment Cancelled',adminMsg,t.id,'client');
-  sendEmailNotification(t.clientEmail,'Appointment Cancelled',clientMsg);
-  sendEmailNotification(data.admin.email,'Client Cancelled',adminMsg);
+  sendEmailNotification(t.clientEmail,'Appointment Cancelled',clientMsg,'cancelled','client');
+  sendEmailNotification(data.admin.email,'Client Cancelled',adminMsg,'cancelled','admin');
   DB.save(data); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
 }
 function clientRescheduleTicket(id) {
@@ -780,8 +824,8 @@ function saveClientReschedule(id) {
   const adminMsg = buildNotifMessage(t, 'rescheduled by client.');
   addNotif(true,t.clientEmail,'Appointment Rescheduled',clientMsg,t.id,'client');
   addNotif(true,null,'Client Rescheduled',adminMsg,t.id,'client');
-  sendEmailNotification(t.clientEmail,'Appointment Rescheduled',clientMsg);
-  sendEmailNotification(data.admin.email,'Client Rescheduled',adminMsg);
+  sendEmailNotification(t.clientEmail,'Appointment Rescheduled',clientMsg,'rescheduled','client');
+  sendEmailNotification(data.admin.email,'Client Rescheduled',adminMsg,'rescheduled','admin');
   DB.save(data); closeModal(); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
 }
 
@@ -865,8 +909,8 @@ function submitTicket() {
   const adminMsg = buildNotifMessage(t, 'raised a new ticket.');
   addNotif(true,currentClient.email,'Ticket Raised',clientMsg,t.id,'client');
   addNotif(true,null,'New Ticket',adminMsg,t.id,'client');
-  sendEmailNotification(currentClient.email,'Request Received',clientMsg);
-  sendEmailNotification(data.admin.email,'New Ticket Raised',adminMsg);
+  sendEmailNotification(currentClient.email,'Request Received',clientMsg,'raised','client');
+  sendEmailNotification(data.admin.email,'New Ticket Raised',adminMsg,'raised','admin');
   DB.save(data); closeModal(); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
 }
 function submitStaffTicket() {
@@ -883,8 +927,8 @@ function submitStaffTicket() {
   const adminMsg = buildNotifMessage(t, `ticket created by ${currentRole==='admin'?'consultant':'assistant'}.`);
   addNotif(true,client.email,'Appointment Scheduled',clientMsg,t.id,currentRole);
   addNotif(true,null,'Ticket Created',adminMsg,t.id,currentRole);
-  sendEmailNotification(client.email,'Appointment Scheduled',clientMsg);
-  sendEmailNotification(data.admin.email,'Ticket Created',adminMsg);
+  sendEmailNotification(client.email,'Appointment Scheduled',clientMsg,'raised','client');
+  sendEmailNotification(data.admin.email,'Ticket Created',adminMsg,'raised','admin');
   DB.save(data); closeModal(); renderTickets(); renderDashboard(); renderNotifBadge();
 }
 
