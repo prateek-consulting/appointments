@@ -6,7 +6,6 @@
 <title>Financial Consultant Portal</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23f0f4f8'/><text y='.9em' x='18' font-size='90' font-weight='bold' font-family='Arial, sans-serif' fill='%230056b3'>P</text></svg>">
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
@@ -131,6 +130,7 @@
     <input id="clientEmailInput" type="email" placeholder="Enter your registered email address" />
     <button class="btn-primary" onclick="clientLogin()">Access Client Portal</button>
     <div class="admin-link">Staff access? <a href="#" onclick="showAdminLogin(); return false;">Admin Login</a></div>
+    <div class="admin-link" style="margin-top:10px;"><a href="#" onclick="resetAdminSetup(); return false;" style="color:#c53030;">Reset Admin Setup</a></div>
   </div>
 </div>
 
@@ -208,9 +208,9 @@
 
     <section id="tab-services" class="hidden">
       <div class="card">
-        <h2>Services & Tasks</h2>
+        <h2>Services & Tasks <span id="servicesAdminOnly"></span></h2>
         <p style="font-size:13px; color:#718096; margin-bottom:14px;">Define the services you offer and their default hourly rates.</p>
-        <button class="btn" onclick="openAddService()">+ Add New Service</button>
+        <button class="btn" id="addServiceBtn" onclick="openAddService()">+ Add New Service</button>
         <div id="servicesList" style="margin-top:16px;"></div>
       </div>
     </section>
@@ -322,7 +322,6 @@
 <div id="modalContainer"></div>
 
 <script>
-/* ============ YOUR FIREBASE CONFIG ============ */
 const firebaseConfig = {
   apiKey: "AIzaSyDHEdCNJLTlahQ4ppEhch7oXOFJExB1wPw",
   authDomain: "consulting-portal-82831.firebaseapp.com",
@@ -337,7 +336,6 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-/* ============ SESSION ============ */
 const SESSION_TIMEOUT = 5 * 60 * 1000;
 function updateActivity() { localStorage.setItem('lastActivity', Date.now().toString()); }
 ['mousemove','keydown','click','scroll','touchstart'].forEach(evt => document.addEventListener(evt, updateActivity));
@@ -355,7 +353,6 @@ function forceLogout() {
   document.getElementById('clientLanding').classList.remove('hidden');
 }
 
-/* ============ DATA LAYER (FIREBASE) ============ */
 let data = {
   admin: { email: '', title: 'Financial Consultant Portal', subtitle: 'Professional financial advisory services', phone: '', rate: 100, currency: 'USD', ejsPub: '', ejsServ: '', ejsTemp: '' },
   assistant: { email: '', enabled: false },
@@ -371,20 +368,27 @@ let currentClient = null, currentRole = null, currentWeekStart = getWeekStart(ne
 let adminNotifFilter = 'all', clientNotifFilter = 'all';
 
 async function loadData() {
-  const doc = await db.collection('settings').doc('config').get();
-  if (doc.exists) {
-    data = doc.data();
-  } else {
-    data.services = [{ id: uid(), name: 'General Consultation', rate: 100 }];
-    await db.collection('settings').doc('config').set(data);
+  try {
+    const doc = await db.collection('settings').doc('config').get();
+    if (doc.exists) {
+      data = doc.data();
+    } else {
+      data.services = [{ id: uid(), name: 'General Consultation', rate: 100 }];
+      await db.collection('settings').doc('config').set(data);
+    }
+  } catch (error) {
+    console.error('Error loading data:', error);
   }
 }
 
 async function saveData() {
-  await db.collection('settings').doc('config').set(data);
+  try {
+    await db.collection('settings').doc('config').set(data);
+  } catch (error) {
+    console.error('Error saving data:', error);
+  }
 }
 
-/* ============ HELPERS ============ */
 function getWeekStart(d) { const x=new Date(d); x.setDate(x.getDate()-x.getDay()); x.setHours(0,0,0,0); return x; }
 function fmtDate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function fmtDateNice(s) { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
@@ -407,29 +411,32 @@ function buildClientNotifMessage(t, actionText) {
   return `Your ${getTicketServiceName(t)} appointment on ${fmtDateNice(t.date)} at ${t.startTime} (${fmtDuration(t.hours)}) ${actionText}`;
 }
 
-/* ============ EMAIL ============ */
 function sendEmailNotification(to,subject,msg) {
   if (data.admin.ejsPub&&data.admin.ejsServ&&data.admin.ejsTemp) { emailjs.init(data.admin.ejsPub); emailjs.send(data.admin.ejsServ,data.admin.ejsTemp,{to_email:to,from_name:data.admin.title,reply_to:data.admin.email,subject,message:msg}).catch(()=>{}); }
   else console.log(`[MOCK] To:${to} | ${subject} | ${msg}`);
 }
 
-/* ============ AUTH ============ */
 auth.onAuthStateChanged(async (user) => {
   document.getElementById('loadingScreen').classList.add('hidden');
   
   if (user) {
     await loadData();
     
-    // FIX: If admin email is empty, the first person to log in becomes the admin
     if (!data.admin.email || data.admin.email.trim() === '') {
-      data.admin.email = user.email;
-      await saveData(); // Save this to Firebase so it remembers next time
-      currentRole = 'admin';
-      localStorage.setItem('currentUserRole', 'admin');
-      document.getElementById('clientLanding').classList.add('hidden');
-      document.getElementById('mainApp').classList.remove('hidden');
-      updateActivity();
-      renderAll();
+      try {
+        data.admin.email = user.email;
+        await saveData();
+        currentRole = 'admin';
+        localStorage.setItem('currentUserRole', 'admin');
+        document.getElementById('clientLanding').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        updateActivity();
+        renderAll();
+        alert('Welcome! You have been assigned as the Admin. Please complete your setup in Settings.');
+      } catch (error) {
+        console.error('Error assigning admin:', error);
+        alert('Error setting up admin.');
+      }
     }
     else if (user.email === data.admin.email) {
       currentRole = 'admin';
@@ -503,6 +510,18 @@ async function doStaffLogin() {
 
 function logout() { forceLogout(); document.getElementById('adminLoginScreen').classList.remove('hidden'); document.getElementById('loginPass').value=''; }
 
+async function resetAdminSetup() {
+  if (confirm('This will reset the admin setup. Are you sure?')) {
+    try {
+      await db.collection('settings').doc('config').delete();
+      alert('Admin setup reset. Please refresh the page and log in again.');
+      location.reload();
+    } catch (error) {
+      alert('Error resetting.');
+    }
+  }
+}
+
 async function clientLogin() {
   const email = document.getElementById('clientEmailInput').value.trim().toLowerCase();
   const al = document.getElementById('landingAlert');
@@ -536,7 +555,6 @@ async function clientLogin() {
 
 function clientLogout() { forceLogout(); document.getElementById('clientLanding').classList.remove('hidden'); document.getElementById('clientEmailInput').value=''; document.getElementById('landingAlert').innerHTML=''; }
 
-/* ============ NAV ============ */
 function buildNav() {
   const nav=document.getElementById('adminNav'), isA=currentRole==='admin';
   nav.className=isA?'':'assistant-nav'; document.getElementById('mainHeader').className=isA?'':'assistant-header';
@@ -568,7 +586,6 @@ function renderAll() {
   buildNav(); renderDashboard(); renderNotifBadge();
 }
 
-/* ============ DASHBOARD ============ */
 function renderDashboard() {
   document.getElementById('statOpen').textContent=data.tickets.filter(t=>t.status==='raised'||t.status==='accepted').length;
   document.getElementById('statBooked').textContent=data.tickets.filter(t=>t.status==='booked').length;
@@ -587,7 +604,6 @@ function renderDashboard() {
   el.innerHTML='<table><thead><tr><th>Client</th><th>Service</th><th>Date</th><th>Time</th><th>Duration</th><th>Last Action</th></tr></thead><tbody>'+up.map(t=>`<tr><td>${t.clientName}</td><td>${getTicketServiceName(t)}</td><td>${fmtDateNice(t.date)}</td><td>${t.startTime}</td><td>${fmtDuration(t.hours)}</td><td>${modifierTag(t)}</td></tr>`).join('')+'</tbody></table>';
 }
 
-/* ============ TICKETS ============ */
 function renderTickets() {
   const tbody=document.querySelector('#ticketsTable tbody');
   if (!data.tickets.length) { tbody.innerHTML='<tr><td colspan="8" style="text-align:center; color:#718096;">No tickets yet.</td></tr>'; return; }
@@ -652,7 +668,6 @@ async function saveReschedule(id) {
   closeModal();
 }
 
-/* ============ INVOICE ============ */
 function openInvoiceModal(id) {
   const t=data.tickets.find(x=>x.id===id);
   openModal(`<h3>Prepare Invoice</h3><p style="font-size:13px; color:#718096; margin-bottom:10px;">Client: ${t.clientName} | Service: ${getTicketServiceName(t)} | Duration: ${fmtDuration(t.hours)} | Rate: ${fmtMoney(getTicketRate(t))}/hr | Total: ${fmtMoney(t.hours*getTicketRate(t))}</p>
@@ -690,26 +705,65 @@ function printInvoice(id) {
   w.document.close();
 }
 
-/* ============ SERVICES ============ */
+// SERVICES - Only admin can edit
 function renderServices() {
   const el=document.getElementById('servicesList'), sorted=getSortedServices();
+  const isA=currentRole==='admin';
+  
+  // Show/hide admin-only controls
+  document.getElementById('servicesAdminOnly').innerHTML = isA ? '' : '<span style="font-size:12px; color:#718096; font-weight:normal;">(View only - only consultant can edit)</span>';
+  document.getElementById('addServiceBtn').style.display = isA ? '' : 'none';
+  
   if (!sorted.length) { el.innerHTML='<p style="color:#718096;">No services defined yet.</p>'; return; }
-  el.innerHTML=sorted.map(s=>`<div class="service-block"><div class="svc-name">${s.name}</div><div class="svc-rate">${fmtMoney(s.rate)} / hr</div><button class="btn small secondary" onclick="editService('${s.id}')">Edit</button><button class="btn small danger" onclick="removeService('${s.id}')">Remove</button></div>`).join('');
+  
+  el.innerHTML=sorted.map(s=>{
+    let actions = '';
+    if (isA) {
+      actions = `<button class="btn small secondary" onclick="editService('${s.id}')">Edit</button><button class="btn small danger" onclick="removeService('${s.id}')">Remove</button>`;
+    }
+    return `<div class="service-block"><div class="svc-name">${s.name}</div><div class="svc-rate">${fmtMoney(s.rate)} / hr</div>${actions}</div>`;
+  }).join('');
 }
 
 function openAddService() {
+  if (currentRole !== 'admin') { alert('Only the consultant can add services.'); return; }
   openModal(`<h3>Add New Service</h3><label>Service Name *</label><input id="svcName" placeholder="e.g., Tax Planning"/><label>Default Hourly Rate *</label><input id="svcRate" type="number" step="0.01" value="${data.admin.rate}"/><br/><br/><button class="btn" onclick="saveService()">Add Service</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`);
 }
 
-async function saveService() { const n=document.getElementById('svcName').value.trim(), r=parseFloat(document.getElementById('svcRate').value); if (!n||!r||r<=0) { alert('Valid name and rate required.'); return; } data.services.push({id:uid(),name:n,rate:r}); await saveData(); closeModal(); renderServices(); }
+async function saveService() { 
+  if (currentRole !== 'admin') { alert('Only the consultant can add services.'); return; }
+  const n=document.getElementById('svcName').value.trim(), r=parseFloat(document.getElementById('svcRate').value); 
+  if (!n||!r||r<=0) { alert('Valid name and rate required.'); return; } 
+  data.services.push({id:uid(),name:n,rate:r}); 
+  await saveData(); 
+  closeModal(); 
+  renderServices(); 
+}
 
-function editService(id) { const s=data.services.find(x=>x.id===id); openModal(`<h3>Edit Service</h3><label>Service Name</label><input id="svcName" value="${s.name}"/><label>Hourly Rate</label><input id="svcRate" type="number" step="0.01" value="${s.rate}"/><br/><br/><button class="btn" onclick="updateService('${id}')">Save</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`); }
+function editService(id) { 
+  if (currentRole !== 'admin') { alert('Only the consultant can edit services.'); return; }
+  const s=data.services.find(x=>x.id===id); 
+  openModal(`<h3>Edit Service</h3><label>Service Name</label><input id="svcName" value="${s.name}"/><label>Hourly Rate</label><input id="svcRate" type="number" step="0.01" value="${s.rate}"/><br/><br/><button class="btn" onclick="updateService('${id}')">Save</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`); 
+}
 
-async function updateService(id) { const s=data.services.find(x=>x.id===id), n=document.getElementById('svcName').value.trim(), r=parseFloat(document.getElementById('svcRate').value); if (!n||!r||r<=0) { alert('Valid name and rate required.'); return; } s.name=n; s.rate=r; await saveData(); closeModal(); renderServices(); }
+async function updateService(id) { 
+  if (currentRole !== 'admin') { alert('Only the consultant can edit services.'); return; }
+  const s=data.services.find(x=>x.id===id), n=document.getElementById('svcName').value.trim(), r=parseFloat(document.getElementById('svcRate').value); 
+  if (!n||!r||r<=0) { alert('Valid name and rate required.'); return; } 
+  s.name=n; s.rate=r; 
+  await saveData(); 
+  closeModal(); 
+  renderServices(); 
+}
 
-async function removeService(id) { if (!confirm('Remove this service?')) return; data.services=data.services.filter(s=>s.id!==id); await saveData(); renderServices(); }
+async function removeService(id) { 
+  if (currentRole !== 'admin') { alert('Only the consultant can remove services.'); return; }
+  if (!confirm('Remove this service?')) return; 
+  data.services=data.services.filter(s=>s.id!==id); 
+  await saveData(); 
+  renderServices(); 
+}
 
-/* ============ CLIENTS ============ */
 function openAddClient() { openModal(`<h3>Add Client</h3><label>Full Name *</label><input id="acName"/><label>Email *</label><input id="acEmail" type="email"/><label>Organization</label><input id="acOrg"/><br/><br/><button class="btn" onclick="saveClient()">Add</button> <button class="btn secondary" onclick="closeModal()">Cancel</button>`); }
 
 async function saveClient() { const n=document.getElementById('acName').value.trim(), e=document.getElementById('acEmail').value.trim().toLowerCase(), o=document.getElementById('acOrg').value.trim(); if (!n||!e) { alert('Required.'); return; } if (data.clients.some(c=>c.email===e)) { alert('Exists.'); return; } data.clients.push({id:uid(),name:n,email:e,organization:o,createdAt:new Date().toISOString()}); await saveData(); closeModal(); renderClients(); }
@@ -729,7 +783,6 @@ function renderClients() {
   else dl.innerHTML=data.domains.map(d=>`<div class="avail-block">${d} <button class="remove" onclick="removeDomain('${d}')">×</button></div>`).join('');
 }
 
-/* ============ CALENDAR ============ */
 function renderCalendar() {
   const grid=document.getElementById('calendarGrid'), days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   let h=days.map(d=>`<div class="cal-header">${d}</div>`).join('');
@@ -761,7 +814,6 @@ async function addBlock(ds) { const s=document.getElementById('bStart').value, e
 
 async function removeBlock(d,s,e) { data.blocked=data.blocked.filter(b=>!(b.date===d&&b.start===s&&b.end===e)); await saveData(); renderCalendar(); }
 
-/* ============ NOTIFICATIONS ============ */
 function addNotif(forAdmin,clientEmail,type,message,ticketId,source) {
   data.notifications.push({id:uid(),forAdmin,clientEmail,type,message,ticketId,source:source||'admin',read:false,createdAt:new Date().toISOString()});
 }
@@ -812,7 +864,6 @@ async function markAllRead() { data.notifications.forEach(n=>{if(n.forAdmin)n.re
 
 async function deleteNotif(id,isA) { data.notifications=data.notifications.filter(n=>n.id!==id); await saveData(); if(isA){renderNotifications();renderNotifBadge();}else renderClientNotifs(); }
 
-/* ============ SETTINGS ============ */
 function loadSettings() {
   document.getElementById('setTitle').value=data.admin.title;
   document.getElementById('setSubtitle').value=data.admin.subtitle;
@@ -858,7 +909,6 @@ async function saveSettings() {
   alert('Settings saved.');
 }
 
-/* ============ CLIENT PORTAL ============ */
 function renderClientTickets() {
   const tb=document.querySelector('#myTicketsTable tbody'), mine=data.tickets.filter(t=>t.clientEmail===currentClient.email);
   if (!mine.length) { tb.innerHTML='<tr><td colspan="7" style="text-align:center; color:#718096;">No tickets yet.</td></tr>'; return; }
@@ -916,7 +966,6 @@ async function saveClientReschedule(id) {
   await saveData(); closeModal(); renderClientTickets(); renderClientNotifs(); renderNotifBadge();
 }
 
-/* ============ HH:MM DIAL ============ */
 function buildDialHTML(hId, mId) {
   return `<div class="dial-wrap">
     <div class="dial-col"><button onclick="dialUp('${hId}',0,12)">▲</button><div class="dial-val" id="${hId}">01</div><button onclick="dialDown('${hId}',0,12)">▼</button><div class="dial-label">Hours</div></div>
@@ -950,12 +999,12 @@ function getDialHours(hId, mId) {
   return (h * 60 + m) / 60;
 }
 
-/* ============ TICKET CREATION ============ */
 function buildServiceDropdown(selId) {
   const sel=document.getElementById(selId), sorted=getSortedServices();
   sel.innerHTML=sorted.map(s=>`<option value="${s.id}" data-rate="${s.rate}">${s.name} (${fmtMoney(s.rate)}/hr)</option>`).join('')+`<option value="__new__">+ Create New Service...</option>`;
 }
 
+// Client creating new service - uses default rate automatically
 function handleServiceChange(selId, rateId) {
   const sel=document.getElementById(selId), ri=document.getElementById(rateId);
   const isClient = currentClient && !currentRole;
@@ -964,12 +1013,12 @@ function handleServiceChange(selId, rateId) {
     const n=prompt('Service name:'); 
     if (!n) { sel.value=data.services[0]?.id||''; return; }
     
-    let r;
-    if (isClient) {
-      r = data.admin.rate;
-    } else {
-      r = parseFloat(prompt('Hourly rate:', data.admin.rate));
-      if (!r || r<=0) { sel.value=data.services[0]?.id||''; return; }
+    // Client always gets default rate, staff can set custom
+    const r = isClient ? data.admin.rate : parseFloat(prompt('Hourly rate:', data.admin.rate));
+    
+    if (!isClient && (!r || r<=0)) { 
+      sel.value=data.services[0]?.id||''; 
+      return; 
     }
     
     const ns={id:uid(),name:n,rate:r}; 
